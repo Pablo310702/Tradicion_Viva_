@@ -1,0 +1,332 @@
+{% extends "web/base.html" %}
+
+{% block title %}Seguimiento en vivo | San José{% endblock %}
+
+{% block topbar_style %}style="background: {{ h.color_acento|default:'#d4af37' }};"{% endblock %}
+
+{% block brand %}
+<a href="{% url 'web:home' %}" style="display:flex;align-items:center;gap:10px;">
+    {% if h.logo %}
+        <img src="{{ h.logo.url }}" style="height:40px;border-radius:8px;" alt="Logo">
+    {% endif %}
+    {{ h.nombre }}
+</a>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+  .hero{
+    text-align:center;
+    padding:20px 0 10px;
+  }
+
+  .hero h1{
+    margin:0 0 8px;
+    font-size:38px;
+    font-weight:900;
+    color:#fff;
+  }
+
+  .hero p{
+    margin:0 auto;
+    max-width:860px;
+    color:#d8d8d8;
+    font-size:18px;
+    line-height:1.7;
+  }
+
+  .hero-box{
+    margin:24px auto 0;
+    max-width:760px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(212,175,55,.25);
+    border-radius:20px;
+    padding:20px;
+  }
+
+  .hero-btn{
+    display:inline-block;
+    margin-top:22px;
+    background:#d4af37;
+    color:#111;
+    font-weight:800;
+    text-decoration:none;
+    padding:16px 26px;
+    border-radius:999px;
+  }
+
+  .seguimiento-grid{
+    display:grid;
+    grid-template-columns: 2fr 1fr;
+    gap:24px;
+    margin-top:32px;
+    align-items:start;
+  }
+
+  .map-card,
+  .info-card{
+    background:#151515;
+    border:1px solid #2a2a2a;
+    border-radius:24px;
+    overflow:hidden;
+    box-shadow:0 12px 28px rgba(0,0,0,.22);
+  }
+
+  .map-card{
+    padding:18px;
+  }
+
+  #mapaSanJose{
+    width:100%;
+    height:640px;
+    border-radius:18px;
+    overflow:hidden;
+  }
+
+  .info-card{
+    padding:22px;
+  }
+
+  .info-card h2{
+    margin:0 0 18px;
+    font-size:26px;
+    color:#fff;
+  }
+
+  .dato{
+    margin-bottom:14px;
+    color:#ddd;
+    line-height:1.6;
+  }
+
+  .dato strong{
+    color:#d4af37;
+  }
+
+  .turno-actual{
+    margin-top:18px;
+    padding:18px;
+    border-radius:18px;
+    background:#111;
+    border:1px solid #333;
+  }
+
+  .turno-actual h3{
+    margin:0 0 14px;
+    color:#fff;
+    font-size:22px;
+  }
+
+  .share-box{
+    margin-top:20px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .btn{
+    display:inline-block;
+    padding:10px 14px;
+    border-radius:12px;
+    border:1px solid #2a2a2a;
+    color:#fff;
+    background:#121212;
+    cursor:pointer;
+    text-decoration:none;
+    font-weight:700;
+  }
+
+  .btn:hover{
+    border-color:#d4af37;
+    color:#d4af37;
+  }
+
+  .leaflet-popup-content{
+    font-size:14px;
+    line-height:1.55;
+  }
+
+  .popup-title{
+    font-size:16px;
+    font-weight:800;
+    margin-bottom:8px;
+    color:#111;
+  }
+
+  @media (max-width: 980px){
+    .seguimiento-grid{
+      grid-template-columns:1fr;
+    }
+
+    #mapaSanJose{
+      height:520px;
+    }
+
+    .hero h1{
+      font-size:30px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <h1>Cofradía del Señor San José</h1>
+  <div class="hero-box">
+    <p>
+      Sigue en tiempo real el recorrido procesional y consulta el turno correspondiente
+      en cada tramo del cortejo. Al tocar un punto del mapa podrás ver la pieza musical,
+      el género, el compositor y la dirección del turno.
+    </p>
+    <a href="#mapaSanJose" class="hero-btn">Ver recorrido en vivo</a>
+  </div>
+</section>
+
+<section class="seguimiento-grid">
+  <div class="map-card">
+    <div id="mapaSanJose"></div>
+  </div>
+
+  <aside class="info-card">
+    <h2>Turno actual</h2>
+
+    <div class="dato"><strong>Hermandad:</strong> Cofradía del Señor San José</div>
+    <div class="dato"><strong>Templo:</strong> Catedral de Antigua Guatemala</div>
+    <div class="dato"><strong>Fecha:</strong> Sábado 14 de marzo de 2026</div>
+    <div class="dato"><strong>Estado GPS:</strong> <span id="estadoGps">Esperando ubicación...</span></div>
+    <div class="dato"><strong>Hora:</strong> <span id="horaGps">--</span></div>
+
+    <div class="turno-actual">
+      <h3 id="turnoTitulo">Sin turno seleccionado</h3>
+      <div class="dato"><strong>Pieza:</strong> <span id="piezaNombre">--</span></div>
+      <div class="dato"><strong>Género:</strong> <span id="piezaGenero">--</span></div>
+      <div class="dato"><strong>Compositor:</strong> <span id="piezaCompositor">--</span></div>
+      <div class="dato"><strong>Dirección:</strong> <span id="piezaDireccion">--</span></div>
+    </div>
+
+    <div class="share-box">
+      <button class="btn" onclick="copiarEnlace()">Copiar enlace</button>
+      <a class="btn" href="https://wa.me/?text={{ request.build_absolute_uri|urlencode }}" target="_blank">WhatsApp</a>
+    </div>
+  </aside>
+</section>
+
+{{ turnos_data|json_script:"turnos-data" }}
+{{ ruta_coords|json_script:"ruta-coords" }}
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const turnos = JSON.parse(document.getElementById("turnos-data").textContent);
+  const ruta = JSON.parse(document.getElementById("ruta-coords").textContent);
+
+  const centroInicial = ruta.length ? ruta[0] : [14.5566, -90.7332];
+
+  const map = L.map('mapaSanJose').setView(centroInicial, 16);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  if (ruta.length > 1) {
+    const linea = L.polyline(ruta, {
+      color: '#c9a13b',
+      weight: 6,
+      opacity: 0.9
+    }).addTo(map);
+
+    map.fitBounds(linea.getBounds(), { padding: [25, 25] });
+  }
+
+  function actualizarPanel(turno) {
+    document.getElementById("turnoTitulo").textContent = turno.titulo || `Turno ${turno.numero}`;
+    document.getElementById("piezaNombre").textContent = turno.pieza || "--";
+    document.getElementById("piezaGenero").textContent = turno.genero || "--";
+    document.getElementById("piezaCompositor").textContent = turno.compositor || "--";
+    document.getElementById("piezaDireccion").textContent = turno.direccion || "--";
+  }
+
+  turnos.forEach(turno => {
+    const popupHtml = `
+      <div>
+        <div class="popup-title">${turno.titulo}</div>
+        <div><strong>Pieza:</strong> ${turno.pieza || "--"}</div>
+        <div><strong>Género:</strong> ${turno.genero || "--"}</div>
+        <div><strong>Compositor:</strong> ${turno.compositor || "--"}</div>
+        <div><strong>Dirección:</strong> ${turno.direccion || "--"}</div>
+      </div>
+    `;
+
+    const marker = L.marker(turno.coords).addTo(map).bindPopup(popupHtml);
+
+    marker.on("click", function() {
+      actualizarPanel(turno);
+    });
+  });
+
+  const marcadorActual = L.circleMarker(centroInicial, {
+    radius: 10,
+    color: "#ffffff",
+    fillColor: "#168f4b",
+    fillOpacity: 0.95,
+    weight: 3
+  }).addTo(map).bindPopup("Ubicación actual del cortejo");
+
+  function distancia(a, b) {
+    const dx = a[0] - b[0];
+    const dy = a[1] - b[1];
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function turnoMasCercano(lat, lng) {
+    let mejor = null;
+    let mejorDistancia = Infinity;
+
+    turnos.forEach(turno => {
+      const d = distancia([lat, lng], turno.coords);
+      if (d < mejorDistancia) {
+        mejorDistancia = d;
+        mejor = turno;
+      }
+    });
+
+    return mejor;
+  }
+
+  async function actualizarGps() {
+    try {
+      const response = await fetch("{% url 'web:api_ubicacion_san_jose' %}");
+      const data = await response.json();
+
+      if (data.ok && data.latitude && data.longitude) {
+        marcadorActual.setLatLng([data.latitude, data.longitude]);
+        document.getElementById("estadoGps").textContent = "Ubicación en vivo activa";
+        document.getElementById("horaGps").textContent = data.deviceTime || data.serverTime || "--";
+
+        const turno = turnoMasCercano(data.latitude, data.longitude);
+        if (turno) {
+          actualizarPanel(turno);
+        }
+      } else {
+        document.getElementById("estadoGps").textContent = "Sin conexión a Traccar";
+      }
+    } catch (error) {
+      document.getElementById("estadoGps").textContent = "Error al leer GPS";
+      console.error(error);
+    }
+  }
+
+  if (turnos.length > 0) {
+    actualizarPanel(turnos[0]);
+  }
+
+  actualizarGps();
+  setInterval(actualizarGps, 8000);
+
+  function copiarEnlace() {
+    navigator.clipboard.writeText(window.location.href)
+      .then(() => alert("Enlace copiado"));
+  }
+</script>
+{% endblock %}

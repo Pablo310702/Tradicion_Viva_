@@ -1,0 +1,242 @@
+{% extends "web/base.html" %}
+
+{% block title %}{{ h.nombre }} | TRADICIÓN VIVA{% endblock %}
+
+{% block topbar_style %}style="background: {{ h.color_acento|default:'#d4af37' }};"{% endblock %}
+
+{% block brand %}
+<a href="{% url 'web:home' %}" style="display:flex;align-items:center;gap:10px;">
+    {% if h.logo %}
+        <img src="{{ h.logo.url }}" style="height:40px;border-radius:8px;">
+    {% endif %}
+    {{ h.nombre }}
+</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .menu-hermandad{
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap:18px;
+    margin-bottom:20px;
+    flex-wrap:wrap;
+  }
+
+  .menu-item{
+    position:relative;
+  }
+
+  .menu-link{
+    display:inline-block;
+    font-size:14px;
+    font-weight:700;
+    color:#ddd;
+    padding:8px 12px;
+    border-radius:8px;
+    border:1px solid #2a2a2a;
+    transition:.15s;
+    background:#111;
+  }
+
+  .menu-link:hover{
+    color:#d4af37;
+    border-color:#d4af37;
+  }
+
+  .dropdown{
+    position:absolute;
+    top:100%;
+    left:0;
+    min-width:240px;
+    background:rgba(120,120,120,.92);
+    border-radius:12px;
+    padding:10px 0;
+    display:none;
+    z-index:50;
+    margin-top:8px;
+  }
+
+  .dropdown a{
+    display:block;
+    padding:12px 18px;
+    color:#fff;
+    font-size:14px;
+    font-weight:700;
+  }
+
+  .dropdown a:hover{
+    background:rgba(255,255,255,.08);
+    color:#fff;
+  }
+
+  .menu-item:hover .dropdown{
+    display:block;
+  }
+
+  .hero{
+    border:1px solid #2a2a2a;
+    border-radius:16px;
+    overflow:hidden;
+    background:#151515;
+    box-shadow:0 12px 28px rgba(0,0,0,.25);
+    margin-bottom:18px;
+  }
+
+  .cover{
+    height:320px;
+    background:#111;
+    background-size:cover;
+    background-position:center;
+    position:relative;
+  }
+
+  .cover::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:linear-gradient(to bottom, rgba(0,0,0,.15), rgba(0,0,0,.65));
+  }
+
+  .hero-body{
+    padding:16px;
+    display:flex;
+    gap:14px;
+    align-items:flex-start;
+  }
+
+  .logo{
+    width:72px;
+    height:72px;
+    border-radius:16px;
+    background:#0f0f0f;
+    border:1px solid #2a2a2a;
+    overflow:hidden;
+    flex:0 0 auto;
+    display:grid;
+    place-items:center;
+  }
+
+  .logo img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+
+  h1{
+    margin:0 0 8px;
+    font-size:26px;
+    font-weight:900;
+  }
+
+  .meta{
+    color:#bdbdbd;
+    margin:0 0 6px;
+  }
+
+  .btn{
+    display:inline-block;
+    margin-top:12px;
+    padding:10px 14px;
+    border-radius:12px;
+    border:1px solid #2a2a2a;
+    color:#fff;
+    text-decoration:none;
+    background:#121212;
+  }
+
+  .btn:hover{
+    border-color:#d4af37;
+  }
+
+  @media (max-width:768px){
+    .menu-hermandad{
+      justify-content:flex-start;
+    }
+
+    .dropdown{
+      position:static;
+      display:block;
+      min-width:100%;
+      margin-top:8px;
+      background:#222;
+    }
+
+    .menu-item:hover .dropdown{
+      display:block;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="menu-hermandad">
+
+  <a class="menu-link" href="{% url 'web:hermandad_detalle' h.slug %}">Inicio</a>
+
+  <div class="menu-item">
+    <span class="menu-link">Hermandad ▼</span>
+    <div class="dropdown">
+      <a href="{% url 'web:seccion_generica' h.slug 'mision-vision' %}">Misión y Visión</a>
+      <a href="{% url 'web:seccion_generica' h.slug 'nuestras-imagenes' %}">Nuestras Imágenes</a>
+      <a href="{% url 'web:seccion_generica' h.slug 'templo' %}">Templo</a>
+    </div>
+  </div>
+
+  <a class="menu-link" href="{% url 'web:seccion_generica' h.slug 'agenda' %}">Agenda</a>
+
+  <div class="menu-item">
+    <span class="menu-link">Multimedia ▼</span>
+    <div class="dropdown">
+      <a href="{% url 'web:seccion_generica' h.slug 'galeria-fotos' %}">Galería de fotos</a>
+      <a href="{% url 'web:seccion_generica' h.slug 'galeria-filmica' %}">Galería fílmica</a>
+      <a href="{% url 'web:seccion_generica' h.slug 'marchas' %}">Marchas</a>
+    </div>
+  </div>
+
+  <div class="menu-item">
+    <span class="menu-link">Devotos ▼</span>
+    <div class="dropdown">
+      <a href="{% url 'web:seccion_generica' h.slug 'registro-actualizacion-datos' %}">Registro y actualización de datos</a>
+      <a href="{% url 'web:seccion_generica' h.slug 'recuperacion-contrasena' %}">Recuperación de contraseña</a>
+    </div>
+  </div>
+
+</div>
+
+<section class="hero">
+  {% if h.portada %}
+    <div class="cover" style="background-image:url('{{ h.portada.url }}');"></div>
+  {% else %}
+    <div class="cover" style="background-image:linear-gradient(135deg,#1a1a1a,#101010);"></div>
+  {% endif %}
+
+  <div class="hero-body">
+    <div class="logo">
+      {% if h.logo %}
+        <img src="{{ h.logo.url }}" alt="Logo {{ h.nombre }}">
+      {% else %}
+        <span style="color:#666; font-size:12px;">Logo</span>
+      {% endif %}
+    </div>
+
+    <div>
+      <h1>{{ h.nombre }}</h1>
+      {% if h.templo %}<p class="meta">{{ h.templo }}</p>{% endif %}
+      <p class="meta">{{ h.ciudad }}</p>
+
+      {% if h.descripcion_corta %}
+        <p>{{ h.descripcion_corta }}</p>
+      {% else %}
+        <p style="color:#bdbdbd;">Aquí irá la información oficial de esta hermandad.</p>
+      {% endif %}
+
+      <a class="btn" href="{% url 'web:home' %}">← Ver todas las hermandades</a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
