@@ -139,12 +139,11 @@ def eliminar_turno_san_jose(request, turno_id):
     messages.success(request, "Turno eliminado.")
     return redirect("web:editor_turnos_san_jose")
 
-
 def api_ubicacion_san_jose(request):
     base_url = settings.TRACCAR_BASE_URL.rstrip("/")
     username = settings.TRACCAR_USERNAME
     password = settings.TRACCAR_PASSWORD
-    device_id = settings.TRACCAR_DEVICE_ID_SAN_JOSE
+    unique_id = str(settings.TRACCAR_DEVICE_ID_SAN_JOSE)
 
     try:
         session = requests.Session()
@@ -152,23 +151,47 @@ def api_ubicacion_san_jose(request):
         login_response = session.post(
             f"{base_url}/api/session",
             data={"email": username, "password": password},
-            timeout=10
+            timeout=15
         )
         login_response.raise_for_status()
 
+        devices_response = session.get(
+            f"{base_url}/api/devices",
+            timeout=15
+        )
+        devices_response.raise_for_status()
+
+        devices = devices_response.json()
+
+        device = next(
+            (d for d in devices if str(d.get("uniqueId")) == unique_id),
+            None
+        )
+
+        if not device:
+            return JsonResponse({
+                "ok": False,
+                "message": f"No se encontró el dispositivo con uniqueId {unique_id}"
+            })
+
+        internal_device_id = device.get("id")
+
         positions_response = session.get(
             f"{base_url}/api/positions",
-            params={"deviceId": device_id},
-            timeout=10
+            params={"deviceId": internal_device_id},
+            timeout=15
         )
         positions_response.raise_for_status()
 
-        data = positions_response.json()
+        positions = positions_response.json()
 
-        if not data:
-            return JsonResponse({"ok": False, "message": "No hay posiciones todavía."})
+        if not positions:
+            return JsonResponse({
+                "ok": False,
+                "message": "No hay posiciones disponibles todavía."
+            })
 
-        pos = data[-1]
+        pos = positions[-1]
 
         return JsonResponse({
             "ok": True,
@@ -178,6 +201,8 @@ def api_ubicacion_san_jose(request):
             "course": pos.get("course"),
             "deviceTime": pos.get("deviceTime"),
             "serverTime": pos.get("serverTime"),
+            "internalDeviceId": internal_device_id,
+            "uniqueId": unique_id,
         })
 
     except Exception as e:
