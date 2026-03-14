@@ -294,20 +294,73 @@
     return mejor;
   }
 
+  let ultimoTurnoNumero = 1;
+  let ultimoLat = null;
+  let ultimoLng = null;
+  let confirmacionesTurno = {};
+
+  const RADIO_CATEDRAL = 0.00035;
+  const CAMBIO_MAXIMO_GPS = 0.0012;
+  const TURNO_MAX_SALTO = 2;
+  const CATEDRAL_COORDS = [14.557212, -90.733235];
+
+  function estaDentroDeCatedral(lat, lng) {
+    return distancia([lat, lng], CATEDRAL_COORDS) <= RADIO_CATEDRAL;
+  }
+
   async function actualizarGps() {
     try {
       const response = await fetch("{% url 'web:api_ubicacion_san_jose' %}");
       const data = await response.json();
 
       if (data.ok && data.latitude && data.longitude) {
-        marcadorActual.setLatLng([data.latitude, data.longitude]);
+        const lat = data.latitude;
+        const lng = data.longitude;
+
+        if (ultimoLat !== null && ultimoLng !== null) {
+          const salto = distancia([lat, lng], [ultimoLat, ultimoLng]);
+          if (salto > CAMBIO_MAXIMO_GPS) {
+            document.getElementById("estadoGps").textContent = "GPS inestable, esperando confirmación";
+            return;
+          }
+        }
+
+        ultimoLat = lat;
+        ultimoLng = lng;
+
+        marcadorActual.setLatLng([lat, lng]);
         document.getElementById("estadoGps").textContent = "Ubicación en vivo activa";
         document.getElementById("horaGps").textContent = data.deviceTime || data.serverTime || "--";
 
-        const turno = turnoMasCercano(data.latitude, data.longitude);
-        if (turno) {
-          actualizarPanel(turno);
+        if (estaDentroDeCatedral(lat, lng)) {
+          const turno1 = turnos.find(t => t.numero === 1);
+          if (turno1) {
+            actualizarPanel(turno1);
+            ultimoTurnoNumero = 1;
+          }
+          return;
         }
+
+        const turnoDetectado = turnoMasCercano(lat, lng);
+        if (!turnoDetectado) return;
+
+        if (Math.abs(turnoDetectado.numero - ultimoTurnoNumero) > TURNO_MAX_SALTO) {
+          document.getElementById("estadoGps").textContent = "Cambio brusco detectado, esperando confirmación";
+          return;
+        }
+
+        const clave = String(turnoDetectado.numero);
+        confirmacionesTurno[clave] = (confirmacionesTurno[clave] || 0) + 1;
+
+        Object.keys(confirmacionesTurno).forEach(k => {
+          if (k !== clave) confirmacionesTurno[k] = 0;
+        });
+
+        if (confirmacionesTurno[clave] >= 2) {
+          actualizarPanel(turnoDetectado);
+          ultimoTurnoNumero = turnoDetectado.numero;
+        }
+
       } else {
         document.getElementById("estadoGps").textContent = "Sin conexión a Traccar";
       }
@@ -318,7 +371,8 @@
   }
 
   if (turnos.length > 0) {
-    actualizarPanel(turnos[0]);
+    const turno1 = turnos.find(t => t.numero === 1) || turnos[0];
+    actualizarPanel(turno1);
   }
 
   actualizarGps();
