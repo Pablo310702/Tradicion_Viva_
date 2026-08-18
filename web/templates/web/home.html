@@ -1,6 +1,15 @@
 {% extends "web/base.html" %}
 
 {% block title %}Inicio | TRADICIÓN VIVA{% endblock %}
+{% block meta_description %}Consulta las hermandades y cofradías registradas, sus agendas y recorridos procesionales.{% endblock %}
+{% block social_meta %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="TRADICIÓN VIVA">
+  <meta property="og:title" content="TRADICIÓN VIVA">
+  <meta property="og:description" content="Hermandades, cofradías, agendas y recorridos procesionales de Antigua Guatemala.">
+  <meta property="og:url" content="{{ request.build_absolute_uri }}">
+  <meta name="twitter:card" content="summary">
+{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -98,7 +107,7 @@
 
 {% block content %}
 
-<h2 class="section-title">Hermandades registradas</h2>
+<h2 class="section-title">Hermandades y cofradías registradas</h2>
 
 <div class="grid">
   {% for h in hermandades %}

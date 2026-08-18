@@ -1,0 +1,48 @@
+TRADICIÓN VIVA - AJUSTES DE IMÁGENES Y GPS
+Fecha: 18/08/2026
+
+1. GALERÍA / NUESTRAS IMÁGENES
+- Cuadrícula de dos columnas en escritorio.
+- Imágenes uniformes y responsivas, con presentación similar a la referencia proporcionada.
+- En celular pasan automáticamente a una columna.
+- Se agregó el campo "Autor / fotografía" a cada Imagen institucional.
+- El crédito aparece sobre la fotografía y también debajo de la descripción.
+- Las descripciones y textos institucionales se muestran justificados.
+- Nueva migración: 0009_imagen_autor_y_traccar_identificador.py
+
+2. GPS / TRACCAR
+- Corregida la diferencia entre el IDENTIFICADOR mostrado por Traccar Client (uniqueId) y el ID interno de Traccar.
+- Ahora se puede escribir 81709810 directamente en Django Admin.
+- Django consulta /api/devices, encuentra el ID interno correspondiente y luego obtiene la última posición.
+- El mismo identificador puede seguir utilizándose en varias hermandades/cofradías.
+- Se mejoraron los mensajes de diagnóstico: credenciales faltantes, credenciales rechazadas, dispositivo no registrado y dispositivo sin posición.
+- El mapa ya no muestra un marcador GPS ficticio antes de recibir coordenadas reales.
+
+CONFIGURACIÓN NECESARIA PARA TRACCAR CLIENT
+A) En Traccar Client:
+   Identificador: 81709810
+   URL del servidor: http://demo.traccar.org:5055
+
+B) En la consola web de Traccar (misma cuenta):
+   Crea/agrega un dispositivo cuyo Identificador sea exactamente: 81709810
+
+C) En el archivo .env de TRADICIÓN VIVA:
+   TRACCAR_BASE_URL=https://demo.traccar.org
+   TRACCAR_USERNAME=TU_CORREO_DE_TRACCAR
+   TRACCAR_PASSWORD=TU_CONTRASENA_DE_TRACCAR
+
+IMPORTANTE: el puerto 5055 es para que Traccar Client envíe posiciones. La API web que consulta Django usa la URL base sin :5055.
+
+D) En Django Admin > Hermandades y cofradías:
+   Marca Seguimiento GPS activo
+   Identificador del dispositivo Traccar: 81709810
+
+EJECUTAR AL ACTUALIZAR EL PROYECTO
+python manage.py migrate
+python manage.py check
+python manage.py runserver
+
+AYUDANTE OPCIONAL
+También se agregó configurar_traccar.py. Puedes ejecutar:
+python configurar_traccar.py
+para guardar de forma local la URL, correo y contraseña de Traccar sin escribir la contraseña en pantalla.

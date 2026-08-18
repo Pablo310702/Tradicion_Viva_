@@ -1,0 +1,31 @@
+TRADICIÓN VIVA - CAMBIOS SOLICITADOS 14/08/2026
+=================================================
+
+1. REGISTRO DE DEVOTO
+- Se eliminó el campo Género del formulario, modelo y panel administrativo.
+- La medición del hombro ahora se guarda en centímetros (medida_hombro_cm).
+- La cámara ya no muestra la medida final en píxeles.
+- Para convertir correctamente a una unidad física, la pantalla de cámara solicita
+  la altura total de la persona como referencia y después pide marcar:
+  1) suelo, 2) parte superior de la cabeza, 3) hombro.
+- El resultado se muestra en metros y centímetros, por ejemplo:
+  1.48 m (148.0 cm).
+
+2. COMPROBANTE PDF
+- Al guardar un registro válido, el sistema genera y descarga automáticamente un PDF.
+- El PDF utiliza el logo, nombre y color de acento de la hermandad/cofradía correspondiente.
+- Incluye DPI, nombre, fecha de nacimiento, ubicación, medida de hombro y QR.
+- Cada devoto tiene un código UUID único para volver a abrir su comprobante.
+- Se agregó ReportLab al requirements.txt.
+
+3. MENÚ RESPONSIVO
+- A 1050 px de ancho o menos, desaparece el menú horizontal.
+- Aparece un botón tipo hamburguesa en el encabezado.
+- Al pulsarlo se abre un panel lateral oscuro desde la derecha, inspirado en la referencia
+  de Escuela de Cristo proporcionada para el proyecto.
+- Se aplicó a la página principal de cada organización, secciones y seguimiento en vivo.
+
+4. BASE DE DATOS
+- Nueva migración: hermandades/migrations/0006_devoto_comprobante_medicion.py
+- iniciar_local.bat ya ejecuta `python manage.py migrate`, por lo que basta con ejecutar
+  ese archivo para instalar ReportLab, aplicar la migración y levantar el servidor.

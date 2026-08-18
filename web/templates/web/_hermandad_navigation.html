@@ -1,0 +1,120 @@
+<nav class="org-desktop-menu" aria-label="Navegación de {{ h.nombre }}" style="--org-accent:{{ h.color_acento|default:'#d4af37' }};">
+  <a class="org-menu-link" href="{% url 'web:hermandad_detalle' h.slug %}">Inicio</a>
+
+  <div class="org-menu-item">
+    <span class="org-menu-link">{% if h.slug == "san-jose" or h.slug == "rosario-merced" %}Cofradía{% else %}Hermandad{% endif %} ▼</span>
+    <div class="org-dropdown">
+      <a href="{% url 'web:seccion_generica' h.slug 'mision-vision' %}">Misión y Visión</a>
+      <a href="{% url 'web:seccion_generica' h.slug 'nuestras-imagenes' %}">Nuestras Imágenes</a>
+      <a href="{% url 'web:seccion_generica' h.slug 'templo' %}">Templo</a>
+    </div>
+  </div>
+
+  <a class="org-menu-link" href="{% url 'web:seccion_generica' h.slug 'agenda' %}">Agenda</a>
+
+  <div class="org-menu-item">
+    <span class="org-menu-link">Multimedia ▼</span>
+    <div class="org-dropdown">
+      <a href="{% url 'web:seccion_generica' h.slug 'galeria-fotos' %}">Galería de fotos</a>
+      <a href="{% url 'web:seccion_generica' h.slug 'galeria-filmica' %}">Galería fílmica</a>
+      <a href="{% url 'web:seccion_generica' h.slug 'marchas' %}">Marchas</a>
+    </div>
+  </div>
+
+  <div class="org-menu-item">
+    <span class="org-menu-link">Recorrido ▼</span>
+    <div class="org-dropdown">
+      <a href="{% url 'web:seguimiento' h.slug %}">Seguimiento en vivo</a>
+    </div>
+  </div>
+
+  <div class="org-menu-item">
+    <span class="org-menu-link">Devotos ▼</span>
+    <div class="org-dropdown">
+      <a href="{% url 'web:seccion_generica' h.slug 'registro-actualizacion-datos' %}">Registro</a>
+    </div>
+  </div>
+</nav>
+
+<button class="org-menu-overlay" id="orgMenuOverlay" type="button" aria-label="Cerrar menú"></button>
+<aside class="org-menu-drawer" id="orgMenuDrawer" aria-hidden="true" style="--org-accent:{{ h.color_acento|default:'#d4af37' }};">
+  <div class="org-drawer-top">
+    <a class="org-drawer-brand" href="{% url 'web:hermandad_detalle' h.slug %}">
+      {% if h.logo %}<img src="{{ h.logo.url }}" alt="Logo de {{ h.nombre }}">{% endif %}
+      <span>{{ h.nombre }}</span>
+    </a>
+    <button type="button" class="org-menu-close" id="orgMenuClose" aria-label="Cerrar menú">×</button>
+  </div>
+
+  <div class="org-drawer-links">
+    <a href="{% url 'web:hermandad_detalle' h.slug %}">Inicio</a>
+
+    <details>
+      <summary>{% if h.slug == "san-jose" or h.slug == "rosario-merced" %}Cofradía{% else %}Hermandad{% endif %}</summary>
+      <div class="org-drawer-submenu">
+        <a href="{% url 'web:seccion_generica' h.slug 'mision-vision' %}">Misión y Visión</a>
+        <a href="{% url 'web:seccion_generica' h.slug 'nuestras-imagenes' %}">Nuestras Imágenes</a>
+        <a href="{% url 'web:seccion_generica' h.slug 'templo' %}">Templo</a>
+      </div>
+    </details>
+
+    <a href="{% url 'web:seccion_generica' h.slug 'agenda' %}">Agenda</a>
+
+    <details>
+      <summary>Multimedia</summary>
+      <div class="org-drawer-submenu">
+        <a href="{% url 'web:seccion_generica' h.slug 'galeria-fotos' %}">Galería de fotos</a>
+        <a href="{% url 'web:seccion_generica' h.slug 'galeria-filmica' %}">Galería fílmica</a>
+        <a href="{% url 'web:seccion_generica' h.slug 'marchas' %}">Marchas</a>
+      </div>
+    </details>
+
+    <details>
+      <summary>Recorrido</summary>
+      <div class="org-drawer-submenu">
+        <a href="{% url 'web:seguimiento' h.slug %}">Seguimiento en vivo</a>
+      </div>
+    </details>
+
+    <details>
+      <summary>Devotos</summary>
+      <div class="org-drawer-submenu"><a href="{% url 'web:seccion_generica' h.slug 'registro-actualizacion-datos' %}">Registro</a></div>
+    </details>
+  </div>
+</aside>
+
+<script>
+(() => {
+  const toggle = document.getElementById('orgMenuToggle');
+  const drawer = document.getElementById('orgMenuDrawer');
+  const overlay = document.getElementById('orgMenuOverlay');
+  const closeButton = document.getElementById('orgMenuClose');
+  if (!toggle || !drawer || !overlay || !closeButton) return;
+
+  const openMenu = () => {
+    drawer.classList.add('is-open');
+    overlay.classList.add('is-open');
+    drawer.setAttribute('aria-hidden', 'false');
+    toggle.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('org-menu-open');
+  };
+  const closeMenu = () => {
+    drawer.classList.remove('is-open');
+    overlay.classList.remove('is-open');
+    drawer.setAttribute('aria-hidden', 'true');
+    toggle.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('org-menu-open');
+  };
+
+  toggle.addEventListener('click', openMenu);
+  overlay.addEventListener('click', closeMenu);
+  closeButton.addEventListener('click', closeMenu);
+  drawer.querySelectorAll('a').forEach(link => link.addEventListener('click', closeMenu));
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && drawer.classList.contains('is-open')) closeMenu();
+  });
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 1050 && drawer.classList.contains('is-open')) closeMenu();
+  });
+})();
+</script>

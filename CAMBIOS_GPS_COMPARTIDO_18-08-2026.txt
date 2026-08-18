@@ -1,0 +1,17 @@
+CAMBIO: ID DE TRACCAR COMPARTIDO ENTRE HERMANDADES / COFRADÍAS
+Fecha: 18-08-2026
+
+Se eliminó la restricción UNIQUE del campo traccar_device_id.
+Ahora el mismo ID de dispositivo Traccar puede asignarse a dos o más hermandades/cofradías desde Django Admin.
+
+Esto permite, por ejemplo, configurar el ID 81709810 en todas las organizaciones cuando se utilizará un único teléfono o GPS para las pruebas/demostraciones.
+
+IMPORTANTE DESPUÉS DE ACTUALIZAR EL PROYECTO:
+    python manage.py migrate
+    python manage.py check
+    python manage.py runserver
+
+La migración nueva es:
+    hermandades/migrations/0008_permitir_device_id_traccar_compartido.py
+
+No es necesario modificar .env, views.py ni registrar dispositivos duplicados en Traccar.

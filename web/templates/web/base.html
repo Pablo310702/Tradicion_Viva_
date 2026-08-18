@@ -4,6 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}TRADICIÓN VIVA{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Sistema de gestión procesional para hermandades y cofradías de Antigua Guatemala.{% endblock %}">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="{{ request.build_absolute_uri }}">
+  {% block social_meta %}
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="TRADICIÓN VIVA">
+    <meta property="og:title" content="TRADICIÓN VIVA">
+    <meta property="og:description" content="Sistema de gestión procesional para hermandades y cofradías de Antigua Guatemala.">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta name="twitter:card" content="summary">
+  {% endblock %}
 
   <style>
     :root{
@@ -24,17 +35,15 @@
       background:var(--bg);
       color:var(--white);
       line-height:1.45;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
     }
 
-    a{
-      color:inherit;
-      text-decoration:none;
-    }
+    a{ color:inherit; text-decoration:none; }
+    img{ max-width:100%; }
 
-    .topbar{
-      height:4px;
-      background:var(--gold);
-    }
+    .topbar{ height:4px; background:var(--gold); }
 
     header{
       background:#000;
@@ -48,6 +57,8 @@
       display:flex;
       justify-content:center;
       align-items:center;
+      position:relative;
+      min-height:82px;
     }
 
     .brand{
@@ -55,17 +66,30 @@
       font-weight:800;
       letter-spacing:.5px;
       text-align:center;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+    }
+
+    .brand-logo{
+      height:45px;
+      width:auto;
+      object-fit:contain;
+      display:block;
     }
 
     .container{
       max-width:1200px;
+      width:100%;
       margin:auto;
       padding:28px 16px 60px;
+      flex:1 0 auto;
     }
 
     .layout{
       display:grid;
-      grid-template-columns: 260px 1fr;
+      grid-template-columns:260px 1fr;
       gap:20px;
       align-items:start;
     }
@@ -92,26 +116,9 @@
       margin-bottom:16px;
     }
 
-    .sidebar-logo img{
-      width:100%;
-      height:100%;
-      object-fit:cover;
-      display:block;
-    }
-
-    .sidebar-title{
-      font-size:18px;
-      font-weight:800;
-      margin:0 0 14px;
-      line-height:1.3;
-    }
-
-    .side-links{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-
+    .sidebar-logo img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .sidebar-title{ font-size:18px; font-weight:800; margin:0 0 14px; line-height:1.3; }
+    .side-links{ display:flex; flex-direction:column; gap:10px; }
     .side-links a{
       display:block;
       padding:10px 12px;
@@ -122,19 +129,8 @@
       font-weight:600;
       transition:.15s ease;
     }
-
-    .side-links a:hover{
-      border-color:var(--gold);
-      color:var(--gold);
-      background:#181818;
-    }
-
-    .section-title{
-      margin:0 0 18px;
-      font-size:22px;
-      font-weight:800;
-    }
-
+    .side-links a:hover{ border-color:var(--gold); color:var(--gold); background:#181818; }
+    .section-title{ margin:0 0 18px; font-size:22px; font-weight:800; }
     .hero-box{
       background:var(--panel);
       border:1px solid var(--border);
@@ -143,12 +139,131 @@
       box-shadow:0 12px 28px rgba(0,0,0,.25);
     }
 
-    footer{
-      border-top:1px solid #222;
-      background:#0b0b0b;
-      color:#aaa;
-    }
 
+    /* Navegación institucional: horizontal en escritorio y panel lateral en media pantalla/móvil. */
+    .org-desktop-menu{
+      --org-accent:var(--gold);
+      display:flex;
+      justify-content:flex-end;
+      align-items:center;
+      gap:14px;
+      margin-bottom:20px;
+      flex-wrap:wrap;
+    }
+    .org-menu-item{ position:relative; }
+    .org-menu-link{
+      display:inline-block;
+      font-size:14px;
+      font-weight:700;
+      color:#ddd;
+      padding:8px 12px;
+      border-radius:8px;
+      border:1px solid #2a2a2a;
+      transition:.15s;
+      background:#111;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .org-menu-link:hover{ color:var(--org-accent); border-color:var(--org-accent); }
+    .org-dropdown{
+      position:absolute;
+      top:100%;
+      left:0;
+      min-width:240px;
+      background:rgba(72,72,72,.98);
+      border:1px solid #555;
+      border-radius:12px;
+      padding:10px 0;
+      display:none;
+      z-index:80;
+      margin-top:8px;
+      box-shadow:0 16px 36px rgba(0,0,0,.45);
+    }
+    .org-dropdown a{ display:block; padding:12px 18px; color:#fff; font-size:14px; font-weight:700; }
+    .org-dropdown a:hover{ background:rgba(255,255,255,.1); color:#fff; }
+    .org-menu-item:hover .org-dropdown,.org-menu-item:focus-within .org-dropdown{ display:block; }
+
+    .org-menu-toggle{
+      display:none;
+      position:absolute;
+      right:16px;
+      top:50%;
+      transform:translateY(-50%);
+      width:48px;
+      height:48px;
+      border:0;
+      border-radius:10px;
+      background:transparent;
+      color:#fff;
+      cursor:pointer;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      gap:5px;
+    }
+    .org-menu-toggle:hover{ background:#151515; }
+    .org-menu-toggle span{ display:block; width:28px; height:2px; background:#fff; border-radius:2px; }
+    .org-menu-overlay{
+      position:fixed;
+      inset:0;
+      z-index:999;
+      border:0;
+      background:rgba(0,0,0,.58);
+      opacity:0;
+      visibility:hidden;
+      transition:opacity .25s ease,visibility .25s ease;
+      cursor:pointer;
+    }
+    .org-menu-overlay.is-open{ opacity:1; visibility:visible; }
+    .org-menu-drawer{
+      --org-accent:var(--gold);
+      position:fixed;
+      top:0;
+      right:0;
+      width:min(460px,86vw);
+      height:100dvh;
+      z-index:1000;
+      background:#0c0c0c;
+      border-left:1px solid #252525;
+      box-shadow:-18px 0 55px rgba(0,0,0,.52);
+      transform:translateX(105%);
+      transition:transform .28s ease;
+      overflow-y:auto;
+      padding:22px 24px 34px;
+    }
+    .org-menu-drawer.is-open{ transform:translateX(0); }
+    .org-drawer-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:28px; }
+    .org-drawer-brand{ display:flex; align-items:center; gap:12px; min-width:0; color:#fff; font-weight:800; }
+    .org-drawer-brand img{ width:58px; height:58px; object-fit:contain; border-radius:10px; background:#111; }
+    .org-drawer-brand span{ font-size:14px; line-height:1.3; max-width:255px; }
+    .org-menu-close{ border:0; background:transparent; color:#fff; font-size:42px; line-height:1; cursor:pointer; padding:0 3px; }
+    .org-drawer-links{ display:flex; flex-direction:column; gap:6px; padding:4px 12px 20px; }
+    .org-drawer-links>a,.org-drawer-links summary{
+      display:block;
+      color:#f6f6f6;
+      font-size:25px;
+      font-weight:800;
+      line-height:1.2;
+      padding:15px 0;
+      cursor:pointer;
+      list-style:none;
+    }
+    .org-drawer-links summary::-webkit-details-marker{ display:none; }
+    .org-drawer-links summary{ position:relative; padding-right:34px; }
+    .org-drawer-links summary::after{ content:'⌄'; position:absolute; right:0; top:12px; color:#fff; font-size:24px; transition:transform .2s; }
+    .org-drawer-links details[open] summary::after{ transform:rotate(180deg); }
+    .org-drawer-links>a:hover,.org-drawer-links summary:hover{ color:var(--org-accent); }
+    .org-drawer-submenu{ display:flex; flex-direction:column; padding:0 0 8px 18px; border-left:2px solid #292929; }
+    .org-drawer-submenu a{ color:#cfcfcf; font-size:16px; font-weight:700; padding:9px 0 9px 12px; }
+    .org-drawer-submenu a:hover{ color:var(--org-accent); }
+    body.org-menu-open{ overflow:hidden; }
+
+    .messages{ max-width:1200px; width:100%; margin:18px auto 0; padding:0 16px; }
+    .message{ padding:12px 16px; border-radius:12px; border:1px solid #3c3c3c; background:#181818; }
+    .message.success{ background:#15321d; border-color:#2f7040; color:#d9ffe1; }
+    .message.error{ background:#3a1717; border-color:#8f3b3b; color:#ffe2e2; }
+
+    footer{ border-top:1px solid #222; background:#0b0b0b; color:#aaa; flex-shrink:0; }
     .footer-inner{
       max-width:1200px;
       margin:auto;
@@ -160,36 +275,48 @@
       flex-wrap:wrap;
     }
 
+    @media (max-width:1050px){
+      .header-inner{ justify-content:flex-start; padding-right:76px; }
+      .brand{ font-size:15px; text-align:left; justify-content:flex-start; max-width:100%; }
+      .brand a{ min-width:0; }
+      .brand a img{ flex:0 0 auto; }
+      .org-menu-toggle{ display:flex; }
+      .org-desktop-menu{ display:none; }
+      .container{ padding-top:18px; }
+    }
+
     @media (max-width:900px){
-      .layout{
-        grid-template-columns: 1fr;
-      }
+      .layout{ grid-template-columns:1fr; }
+      .sidebar{ position:static; }
+      .brand{ font-size:14px; }
+    }
 
-      .sidebar{
-        position:static;
-      }
-
-      .brand{
-        font-size:16px;
-      }
+    @media (max-width:560px){
+      .org-menu-drawer{ width:92vw; padding:18px 18px 28px; }
+      .org-drawer-links>a,.org-drawer-links summary{ font-size:21px; padding:13px 0; }
+      .org-drawer-brand span{ display:none; }
     }
   </style>
 
   {% block extra_css %}{% endblock %}
 </head>
 <body>
-
   <div class="topbar" {% block topbar_style %}{% endblock %}></div>
 
   <header>
     <div class="header-inner">
       <div class="brand">
-        {% block brand %}
-        TRADICIÓN VIVA — Sistema de Gestión Procesional
-        {% endblock %}
+        {% block brand %}<span>TRADICIÓN VIVA</span>{% endblock %}
       </div>
+      {% block header_actions %}{% endblock %}
     </div>
   </header>
+
+  {% if messages %}
+    <div class="messages" role="status" aria-live="polite">
+      {% for message in messages %}<div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}
+    </div>
+  {% endif %}
 
   <main class="container">
     {% block content %}{% endblock %}
@@ -198,9 +325,9 @@
   <footer>
     <div class="footer-inner">
       <div>TRADICIÓN VIVA</div>
+      <div>Desarrollado por Rafael Alvarez</div>
       <div>Sistema de Gestión Procesional para Hermandades y Cofradías</div>
     </div>
   </footer>
-
 </body>
 </html>

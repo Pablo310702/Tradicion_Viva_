@@ -1,16 +1,32 @@
 {% extends "web/base.html" %}
 
-{% block title %}Seguimiento en vivo | San José{% endblock %}
+{% block title %}Seguimiento en vivo | {{ h.nombre }}{% endblock %}
+{% block meta_description %}Consulta el seguimiento en vivo y los turnos del recorrido de {{ h.nombre }}.{% endblock %}
+{% block social_meta %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="TRADICIÓN VIVA">
+  <meta property="og:title" content="Seguimiento en vivo | {{ h.nombre }}">
+  <meta property="og:description" content="Consulta el recorrido y los turnos de {{ h.nombre }}.">
+  <meta property="og:url" content="{{ request.build_absolute_uri }}">
+  {% if h.portada %}<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ h.portada.url }}">{% endif %}
+  <meta name="twitter:card" content="{% if h.portada %}summary_large_image{% else %}summary{% endif %}">
+{% endblock %}
 
 {% block topbar_style %}style="background: {{ h.color_acento|default:'#d4af37' }};"{% endblock %}
 
 {% block brand %}
 <a href="{% url 'web:home' %}" style="display:flex;align-items:center;gap:10px;">
     {% if h.logo %}
-        <img src="{{ h.logo.url }}" style="height:40px;border-radius:8px;" alt="Logo">
+        <img src="{{ h.logo.url }}" style="height:40px;border-radius:8px;" alt="Logo de {{ h.nombre }}">
     {% endif %}
     {{ h.nombre }}
 </a>
+{% endblock %}
+
+{% block header_actions %}
+<button class="org-menu-toggle" id="orgMenuToggle" type="button" aria-label="Abrir menú" aria-controls="orgMenuDrawer" aria-expanded="false">
+  <span></span><span></span><span></span>
+</button>
 {% endblock %}
 
 {% block extra_css %}
@@ -49,7 +65,7 @@
   .hero-btn{
     display:inline-block;
     margin-top:22px;
-    background:#d4af37;
+    background:{{ h.color_acento|default:'#d4af37' }};
     color:#111;
     font-weight:800;
     text-decoration:none;
@@ -78,7 +94,7 @@
     padding:18px;
   }
 
-  #mapaSanJose{
+  #mapaSeguimiento{
     width:100%;
     height:640px;
     border-radius:18px;
@@ -102,7 +118,7 @@
   }
 
   .dato strong{
-    color:#d4af37;
+    color:{{ h.color_acento|default:'#d4af37' }};
   }
 
   .turno-actual{
@@ -139,8 +155,8 @@
   }
 
   .btn:hover{
-    border-color:#d4af37;
-    color:#d4af37;
+    border-color:{{ h.color_acento|default:'#d4af37' }};
+    color:{{ h.color_acento|default:'#d4af37' }};
   }
 
   .leaflet-popup-content{
@@ -160,7 +176,7 @@
       grid-template-columns:1fr;
     }
 
-    #mapaSanJose{
+    #mapaSeguimiento{
       height:520px;
     }
 
@@ -172,29 +188,31 @@
 {% endblock %}
 
 {% block content %}
+{% include "web/_hermandad_navigation.html" %}
+
 <section class="hero">
-  <h1>Cofradía del Señor San José</h1>
+  <h1>{{ h.nombre }}</h1>
   <div class="hero-box">
     <p>
       Sigue en tiempo real el recorrido procesional y consulta el turno correspondiente
       en cada tramo del cortejo. Al tocar un punto del mapa podrás ver la pieza musical,
       el género, el compositor y la dirección del turno.
     </p>
-    <a href="#mapaSanJose" class="hero-btn">Ver recorrido en vivo</a>
+    <a href="#mapaSeguimiento" class="hero-btn">Ver recorrido en vivo</a>
   </div>
 </section>
 
 <section class="seguimiento-grid">
   <div class="map-card">
-    <div id="mapaSanJose"></div>
+    <div id="mapaSeguimiento"></div>
   </div>
 
   <aside class="info-card">
     <h2>Turno actual</h2>
 
-    <div class="dato"><strong>Hermandad:</strong> Cofradía del Señor San José</div>
-    <div class="dato"><strong>Templo:</strong> Catedral de Antigua Guatemala</div>
-    <div class="dato"><strong>Fecha:</strong> Sábado 14 de marzo de 2026</div>
+    <div class="dato"><strong>Organización:</strong> {{ h.nombre }}</div>
+    <div class="dato"><strong>Templo:</strong> {{ h.templo|default:"No especificado" }}</div>
+    <div class="dato"><strong>Recorrido:</strong> Consulta la programación oficial de la organización.</div>
     <div class="dato"><strong>Estado GPS:</strong> <span id="estadoGps">Esperando ubicación...</span></div>
     <div class="dato"><strong>Hora:</strong> <span id="horaGps">--</span></div>
 
@@ -220,10 +238,11 @@
 <script>
   const turnos = JSON.parse(document.getElementById("turnos-data").textContent);
   const ruta = JSON.parse(document.getElementById("ruta-coords").textContent);
+  const gpsActivo = {{ h.gps_configurado|yesno:"true,false" }};
 
   const centroInicial = ruta.length ? ruta[0] : [14.5566, -90.7332];
 
-  const map = L.map('mapaSanJose').setView(centroInicial, 16);
+  const map = L.map('mapaSeguimiento').setView(centroInicial, 16);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap'
@@ -231,7 +250,7 @@
 
   if (ruta.length > 1) {
     const linea = L.polyline(ruta, {
-      color: '#c9a13b',
+      color: '{{ h.color_acento|default:'#c9a13b' }}',
       weight: 6,
       opacity: 0.9
     }).addTo(map);
@@ -265,18 +284,32 @@
     });
   });
 
-  const marcadorActual = L.circleMarker(centroInicial, {
-    radius: 10,
-    color: "#ffffff",
-    fillColor: "#168f4b",
-    fillOpacity: 0.95,
-    weight: 3
-  }).addTo(map).bindPopup("Ubicación actual del cortejo");
+  let marcadorActual = null;
 
-  function distancia(a, b) {
-    const dx = a[0] - b[0];
-    const dy = a[1] - b[1];
-    return Math.sqrt(dx * dx + dy * dy);
+  function asegurarMarcadorActual(lat, lng, nombreDispositivo) {
+    if (!marcadorActual) {
+      marcadorActual = L.circleMarker([lat, lng], {
+        radius: 10,
+        color: "#ffffff",
+        fillColor: "#168f4b",
+        fillOpacity: 0.95,
+        weight: 3
+      }).addTo(map);
+    } else {
+      marcadorActual.setLatLng([lat, lng]);
+    }
+    marcadorActual.bindPopup(nombreDispositivo || "Ubicación actual del cortejo");
+  }
+
+  function distanciaHaversineMetros(a, b) {
+    const radioTierra = 6371000;
+    const aRad = a[0] * Math.PI / 180;
+    const bRad = b[0] * Math.PI / 180;
+    const deltaLat = (b[0] - a[0]) * Math.PI / 180;
+    const deltaLng = (b[1] - a[1]) * Math.PI / 180;
+    const hav = Math.sin(deltaLat / 2) ** 2
+      + Math.cos(aRad) * Math.cos(bRad) * Math.sin(deltaLng / 2) ** 2;
+    return radioTierra * 2 * Math.atan2(Math.sqrt(hav), Math.sqrt(1 - hav));
   }
 
   function turnoMasCercano(lat, lng) {
@@ -284,7 +317,7 @@
     let mejorDistancia = Infinity;
 
     turnos.forEach(turno => {
-      const d = distancia([lat, lng], turno.coords);
+      const d = distanciaHaversineMetros([lat, lng], turno.coords);
       if (d < mejorDistancia) {
         mejorDistancia = d;
         mejor = turno;
@@ -296,11 +329,11 @@
 
   async function actualizarGps() {
     try {
-      const response = await fetch("{% url 'web:api_ubicacion_san_jose' %}");
+      const response = await fetch("{% url 'web:api_ubicacion' h.slug %}");
       const data = await response.json();
 
-      if (data.ok && data.latitude && data.longitude) {
-        marcadorActual.setLatLng([data.latitude, data.longitude]);
+      if (data.ok && data.latitude != null && data.longitude != null) {
+        asegurarMarcadorActual(data.latitude, data.longitude, data.deviceName);
         document.getElementById("estadoGps").textContent = "Ubicación en vivo activa";
         document.getElementById("horaGps").textContent = data.deviceTime || data.serverTime || "--";
 
@@ -309,7 +342,7 @@
           actualizarPanel(turno);
         }
       } else {
-        document.getElementById("estadoGps").textContent = "Sin conexión a Traccar";
+        document.getElementById("estadoGps").textContent = data.message || "Sin conexión a Traccar";
       }
     } catch (error) {
       document.getElementById("estadoGps").textContent = "Error al leer GPS";
@@ -321,8 +354,12 @@
     actualizarPanel(turnos[0]);
   }
 
-  actualizarGps();
-  setInterval(actualizarGps, 8000);
+  if (gpsActivo) {
+    actualizarGps();
+    setInterval(actualizarGps, 8000);
+  } else {
+    document.getElementById("estadoGps").textContent = "Seguimiento GPS no configurado";
+  }
 
   function copiarEnlace() {
     navigator.clipboard.writeText(window.location.href)

@@ -1,0 +1,31 @@
+TRADICIÓN VIVA - CAMBIO EDITOR DE TURNOS UNIVERSAL
+Fecha: 17/08/2026
+
+1. El editor de turnos ya no depende de una lista cerrada de hermandades.
+2. Todas las hermandades existentes y futuras usan su slug real de la base de datos.
+3. Ruta canónica nueva:
+   /hermandad/<slug>/editor-turnos/
+4. Se mantienen las rutas antiguas como compatibilidad.
+5. El editor funciona para organizaciones activas e inactivas si el usuario es staff.
+6. Se agregó un botón "Abrir editor" en la lista de Hermandades/Cofradías del Django Admin.
+7. Cuando un usuario staff visita la página de una organización, el menú Recorrido muestra "Editor de turnos".
+8. Se conserva compatibilidad con la URL antigua de la Hermandad de Soledad que produjo el 404.
+9. Se agregaron pruebas automatizadas para nuevas hermandades, hermandades inactivas y enlaces históricos.
+10. Se añadió DOCUMENTACION_TECNICA.md con arquitectura, base de datos, lenguajes, formatos, herramientas, seguridad y rutas.
+
+IMPORTANTE:
+Ejecutar después de descomprimir:
+    python -m pip install -r requirements.txt
+    python manage.py migrate
+    python manage.py check
+    python manage.py runserver
+
+El editor requiere iniciar sesión con un usuario que tenga is_staff=True.
+
+AJUSTE DE PRIVACIDAD DEL EDITOR DE TURNOS
+----------------------------------------
+- El enlace "Editor de turnos" fue eliminado completamente de la navegación pública, tanto en escritorio como en el menú móvil.
+- Esto también aplica cuando un usuario administrador/staff está autenticado: el enlace no aparece en el front público.
+- El editor sigue disponible para TODAS las hermandades/cofradías, incluidas las que se creen en el futuro, mediante la URL dinámica:
+  /hermandad/<slug>/editor-turnos/
+- El acceso directo continúa protegido por @staff_member_required; un devoto o usuario anónimo que intente abrir la URL es enviado al login de administración.
