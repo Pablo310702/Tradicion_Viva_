@@ -1,0 +1,298 @@
+{% extends "web/base.html" %}
+
+{% block title %}Acceso de devotos | TRADICIÓN VIVA{% endblock %}
+
+{% block topbar_style %}style="background:#d4af37;"{% endblock %}
+
+{% block header_actions %}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .login-shell{
+    max-width:570px;
+    margin:30px auto 60px;
+    background:#151515;
+    color:#fff;
+    border:1px solid #2a2a2a;
+    border-radius:10px;
+    overflow:hidden;
+    box-shadow:0 18px 44px rgba(0,0,0,.45);
+  }
+
+  .login-bar{
+    background:#000;
+    color:#d4af37;
+    padding:16px 28px;
+    font-family:Georgia,serif;
+    font-size:20px;
+    border-bottom:2px solid #d4af37;
+  }
+
+  .login-bar span{
+    margin-right:10px;
+  }
+
+  .login-body{
+    padding:32px 25px 0;
+  }
+
+  .login-body h1{
+    text-align:center;
+    color:#d4af37;
+    font-family:Georgia,serif;
+    font-size:30px;
+    margin:0 0 25px;
+  }
+
+  .login-line{
+    height:1px;
+    background:#333;
+    margin-bottom:35px;
+  }
+
+  .login-field{
+    display:block;
+    margin-bottom:16px;
+  }
+
+  .login-field input{
+    box-sizing:border-box;
+    width:100%;
+    height:68px;
+    border:1px solid #3a3a3a;
+    border-radius:5px;
+    background:#101010;
+    padding:0 16px;
+    font-size:20px;
+    color:#fff;
+    transition:.2s;
+  }
+
+  .login-field input::placeholder{
+    color:#999;
+  }
+
+  .login-field input:hover{
+    border-color:#555;
+  }
+
+  .login-field input:focus{
+    outline:none;
+    border-color:#d4af37;
+    box-shadow:0 0 0 3px rgba(212,175,55,.16);
+    background:#111;
+  }
+
+  .login-error{
+    display:block;
+    color:#d4af37;
+    font-size:13px;
+    margin-top:6px;
+  }
+
+  .login-general{
+    background:#26230f;
+    border:1px solid #d4af37;
+    color:#f1da87;
+    padding:12px 14px;
+    margin-bottom:16px;
+    border-radius:5px;
+  }
+
+  .login-forgot{
+    text-align:center;
+    margin:18px 0 28px;
+  }
+
+  .login-forgot a{
+    color:#d4af37;
+    font-family:Georgia,serif;
+    font-size:17px;
+    text-decoration:none;
+    transition:.2s;
+  }
+
+  .login-forgot a:hover{
+    color:#f0d675;
+    text-decoration:underline;
+  }
+
+  .login-submit{
+    width:calc(100% + 50px);
+    margin-left:-25px;
+    border:0;
+    border-top:1px solid #d4af37;
+    background:#d4af37;
+    color:#000;
+    font-size:21px;
+    font-weight:800;
+    padding:20px;
+    cursor:pointer;
+    transition:.2s;
+  }
+
+  .login-submit:hover{
+    background:#c9a13b;
+  }
+
+  .login-foot{
+    text-align:center;
+    padding:24px 18px 26px;
+    color:#aaa;
+    line-height:1.6;
+  }
+
+  .login-foot strong{
+    color:#fff;
+  }
+
+  .change-access{
+    display:inline-block;
+    margin-top:10px;
+    color:#d4af37;
+    font-weight:800;
+    text-decoration:none;
+    transition:.2s;
+  }
+
+  .change-access:hover{
+    color:#f0d675;
+  }
+
+  .home-button{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    margin-top:15px;
+    padding:10px 20px;
+    border:1px solid #d4af37;
+    border-radius:7px;
+    background:#101010;
+    color:#d4af37 !important;
+    font-weight:700 !important;
+    text-decoration:none;
+    transition:.2s;
+  }
+
+  .home-button:hover{
+    background:#d4af37;
+    color:#000 !important;
+    transform:translateY(-1px);
+  }
+
+  @media(max-width:650px){
+    .login-shell{
+      margin:20px 12px 45px;
+    }
+
+    .login-body{
+      padding-left:18px;
+      padding-right:18px;
+    }
+
+    .login-submit{
+      width:calc(100% + 36px);
+      margin-left:-18px;
+    }
+
+    .login-body h1{
+      font-size:27px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="login-shell">
+
+  <div class="login-bar">
+    <span>🔒</span>
+    Iniciar Sesión
+  </div>
+
+  <div class="login-body">
+
+    <h1>Iniciar Sesión</h1>
+
+    <div class="login-line"></div>
+
+    <form method="post">
+
+      {% csrf_token %}
+
+      {% if next %}
+        <input type="hidden" name="next" value="{{ next }}">
+      {% endif %}
+
+      {% if form.non_field_errors %}
+        <div class="login-general">
+          {% for error in form.non_field_errors %}
+            {{ error }}
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <label class="login-field">
+        {{ form.correo }}
+
+        {% for error in form.correo.errors %}
+          <small class="login-error">
+            {{ error }}
+          </small>
+        {% endfor %}
+      </label>
+
+      <label class="login-field">
+        {{ form.password }}
+
+        {% for error in form.password.errors %}
+          <small class="login-error">
+            {{ error }}
+          </small>
+        {% endfor %}
+      </label>
+
+      <div class="login-forgot">
+        <a href="{% url 'web:devoto_password_reset' %}">
+          ¿Olvidó su contraseña?
+        </a>
+      </div>
+
+      <button class="login-submit" type="submit">
+        Iniciar
+      </button>
+
+    </form>
+
+    <div class="login-foot">
+
+      ¿Aún no tienes cuenta?<br>
+
+      Regístrate desde la sección
+      <strong>Devotos → Registro</strong>
+      de tu organización.
+
+      <br>
+
+      <a
+        class="change-access"
+        href="{% url 'web:iniciar_sesion' %}"
+      >
+        Cambiar tipo de acceso
+      </a>
+
+      <br>
+
+      <a
+        class="home-button"
+        href="{% url 'web:home' %}"
+      >
+        ← Regresar a la página principal
+      </a>
+
+    </div>
+
+  </div>
+
+</section>
+{% endblock %} 

@@ -5,16 +5,27 @@ import requests
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth import authenticate, get_user_model, login
+from django.core import signing
+from django.core.mail import send_mail
+from django.db import transaction
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.views.decorators.http import require_POST
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.text import slugify
+from django.views.decorators.http import require_POST
 
-from hermandades.models import Devoto, EventoAgenda, Hermandad, TurnoRecorrido
+from hermandades.models import CuentaDevoto, Devoto, EventoAgenda, Hermandad, TurnoRecorrido
 
-from .forms import DevotoForm
+from .forms import (
+    AdministrativoLoginForm,
+    DevotoForm,
+    DevotoLoginForm,
+    RecuperarCuentaDevotoForm,
+    RestablecerPasswordDevotoForm,
+)
 from .pdf_utils import generar_comprobante_devoto
 
 logger = logging.getLogger(__name__)
@@ -88,6 +99,201 @@ def home(request):
     return render(request, "web/home.html", {"hermandades": hermandades})
 
 
+def iniciar_sesion(request):
+    """Selector público entre acceso de devotos y acceso administrativo."""
+    return render(request, "web/iniciar_sesion.html")
+
+
+def _cuenta_devoto_actual(request):
+    cuenta_id = request.session.get("cuenta_devoto_id")
+    if not cuenta_id:
+        return None
+    return CuentaDevoto.objects.filter(pk=cuenta_id, activa=True).first()
+
+
+def devoto_login(request):
+    if _cuenta_devoto_actual(request):
+        return redirect("web:devoto_panel")
+
+    initial = {}
+    if request.method == "POST":
+        form = DevotoLoginForm(request.POST)
+        if form.is_valid():
+            cuenta = CuentaDevoto.objects.filter(correo__iexact=form.cleaned_data["correo"]).first()
+            if not cuenta or not cuenta.activa or not cuenta.check_password(form.cleaned_data["password"]):
+                form.add_error(None, "Correo o contraseña incorrectos.")
+            else:
+                request.session.cycle_key()
+                request.session["cuenta_devoto_id"] = cuenta.pk
+                cuenta.ultimo_acceso = timezone.now()
+                cuenta.save(update_fields=["ultimo_acceso"])
+                nombre = cuenta.inscripciones.order_by("creado_en").values_list("primer_nombre", flat=True).first()
+                messages.success(request, f"¡Bienvenido{', ' + nombre if nombre else ''}! Has iniciado sesión correctamente.")
+                next_url = request.POST.get("next") or request.GET.get("next")
+                if next_url and url_has_allowed_host_and_scheme(
+                    next_url,
+                    allowed_hosts={request.get_host()},
+                    require_https=request.is_secure(),
+                ):
+                    return redirect(next_url)
+                return redirect("web:devoto_panel")
+    else:
+        if request.GET.get("correo"):
+            initial["correo"] = request.GET["correo"]
+        form = DevotoLoginForm(initial=initial)
+
+    return render(
+        request,
+        "web/devoto_login.html",
+        {"form": form, "next": request.GET.get("next", "")},
+    )
+
+
+def devoto_panel(request):
+    cuenta = _cuenta_devoto_actual(request)
+    if not cuenta:
+        return redirect(f"{reverse('web:devoto_login')}?next={request.path}")
+    inscripciones = list(
+        cuenta.inscripciones.select_related("hermandad").order_by("hermandad__nombre", "-creado_en")
+    )
+    nombre = inscripciones[0].nombre_completo if inscripciones else cuenta.correo
+    return render(
+        request,
+        "web/devoto_panel.html",
+        {"cuenta": cuenta, "inscripciones": inscripciones, "nombre_devoto": nombre},
+    )
+
+
+@require_POST
+def devoto_preferencias_comunicacion(request, devoto_id):
+    cuenta = _cuenta_devoto_actual(request)
+    if not cuenta:
+        return redirect(f"{reverse('web:devoto_login')}?next={reverse('web:devoto_panel')}")
+
+    devoto = get_object_or_404(Devoto, pk=devoto_id, cuenta=cuenta)
+    devoto.acepta_email = request.POST.get("acepta_email") == "on"
+    devoto.acepta_sms = request.POST.get("acepta_sms") == "on"
+    devoto.acepta_whatsapp = request.POST.get("acepta_whatsapp") == "on"
+    devoto.acepta_comunicaciones = any(
+        [devoto.acepta_email, devoto.acepta_sms, devoto.acepta_whatsapp]
+    )
+    devoto.save(
+        update_fields=[
+            "acepta_email",
+            "acepta_sms",
+            "acepta_whatsapp",
+            "acepta_comunicaciones",
+            "actualizado_en",
+        ]
+    )
+    messages.success(
+        request,
+        f"Preferencias de comunicación actualizadas para {devoto.hermandad.nombre}.",
+    )
+    return redirect("web:devoto_panel")
+
+
+@require_POST
+def devoto_logout(request):
+    request.session.pop("cuenta_devoto_id", None)
+    request.session.cycle_key()
+    messages.success(request, "Sesión de devoto cerrada correctamente.")
+    return redirect("web:home")
+
+
+def administrativo_login(request):
+    if request.user.is_authenticated and request.user.is_staff:
+        return redirect("admin:index")
+
+    form = AdministrativoLoginForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        identificador = form.cleaned_data["usuario"].strip()
+        user_model = get_user_model()
+        user_obj = user_model.objects.filter(username__iexact=identificador).first()
+        if user_obj is None:
+            user_obj = user_model.objects.filter(email__iexact=identificador).first()
+
+        user = authenticate(
+            request,
+            username=user_obj.username if user_obj else identificador,
+            password=form.cleaned_data["password"],
+        )
+        if user and user.is_active and user.is_staff:
+            login(request, user)
+            messages.success(request, "Bienvenido al panel administrativo de TRADICIÓN VIVA.")
+            return redirect("admin:index")
+        form.add_error(None, "Credenciales incorrectas o usuario sin permisos administrativos.")
+
+    return render(request, "web/administrativo_login.html", {"form": form})
+
+
+def devoto_password_reset(request):
+    form = RecuperarCuentaDevotoForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        correo = form.cleaned_data["correo"]
+        cuenta = CuentaDevoto.objects.filter(correo__iexact=correo).first()
+        if not cuenta:
+            registros_anteriores = Devoto.objects.filter(correo__iexact=correo)
+            if registros_anteriores.exists():
+                cuenta = CuentaDevoto(correo=correo)
+                cuenta.set_password(None)
+                cuenta.save()
+                registros_anteriores.filter(cuenta__isnull=True).update(cuenta=cuenta)
+        if cuenta and cuenta.activa:
+            token = signing.dumps(
+                {"id": cuenta.pk, "pwd": cuenta.password[:24]},
+                salt="tradicion-viva-devoto-reset",
+                compress=True,
+            )
+            reset_url = request.build_absolute_uri(
+                reverse("web:devoto_password_reset_confirm", kwargs={"token": token})
+            )
+            try:
+                send_mail(
+                    "Restablecer contraseña - TRADICIÓN VIVA",
+                    (
+                        "Recibimos una solicitud para restablecer tu contraseña de devoto.\n\n"
+                        f"Abre este enlace durante la próxima hora:\n{reset_url}\n\n"
+                        "Si no solicitaste el cambio, ignora este mensaje."
+                    ),
+                    settings.DEFAULT_FROM_EMAIL,
+                    [cuenta.correo],
+                    fail_silently=False,
+                )
+            except Exception:
+                logger.exception("No fue posible enviar recuperación de contraseña a %s", cuenta.correo)
+        messages.success(
+            request,
+            "Si el correo tiene una cuenta activa, recibirás un enlace para restablecer la contraseña.",
+        )
+        return redirect("web:devoto_login")
+    return render(request, "web/devoto_password_reset.html", {"form": form})
+
+
+def devoto_password_reset_confirm(request, token):
+    cuenta = None
+    token_valido = False
+    try:
+        data = signing.loads(token, salt="tradicion-viva-devoto-reset", max_age=3600)
+        cuenta = CuentaDevoto.objects.filter(pk=data.get("id"), activa=True).first()
+        token_valido = bool(cuenta and data.get("pwd") == cuenta.password[:24])
+    except signing.BadSignature:
+        token_valido = False
+
+    form = RestablecerPasswordDevotoForm(request.POST or None) if token_valido else None
+    if token_valido and request.method == "POST" and form.is_valid():
+        cuenta.set_password(form.cleaned_data["password1"])
+        cuenta.save(update_fields=["password"])
+        messages.success(request, "Contraseña actualizada. Ya puedes iniciar sesión.")
+        return redirect("web:devoto_login")
+
+    return render(
+        request,
+        "web/devoto_password_reset_confirm.html",
+        {"form": form, "token_valido": token_valido},
+    )
+
+
 def hermandad_detalle(request, slug):
     h = get_object_or_404(Hermandad, slug=slug, activa=True)
     return render(request, "web/hermandad_detalle.html", {"h": h})
@@ -95,11 +301,15 @@ def hermandad_detalle(request, slug):
 
 def seccion_generica(request, slug, seccion):
     h = get_object_or_404(Hermandad, slug=slug, activa=True)
+    titulo_seccion = SECCION_TITULOS.get(seccion, seccion.replace("-", " ").title())
+    if seccion == "marchas":
+        titulo_seccion = h.etiqueta_musica
+
     contexto = {
         "h": h,
         "seccion": seccion,
         "nombre_corto": h.nombre,
-        "titulo_seccion": SECCION_TITULOS.get(seccion, seccion.replace("-", " ").title()),
+        "titulo_seccion": titulo_seccion,
     }
 
     if seccion == "agenda":
@@ -168,7 +378,12 @@ def seccion_generica(request, slug, seccion):
         if request.method == "POST":
             form = DevotoForm(request.POST, hermandad=h)
             if form.is_valid():
-                devoto = form.save()
+                with transaction.atomic():
+                    devoto = form.save()
+                messages.success(
+                    request,
+                    "Registro completado. Ya puedes iniciar sesión como devoto con tu correo y contraseña.",
+                )
                 return redirect(
                     "web:comprobante_devoto",
                     slug=h.slug,
@@ -245,7 +460,7 @@ def seguimiento(request, slug):
     )
 
 
-@staff_member_required(login_url="admin:login")
+@staff_member_required(login_url="web:administrativo_login")
 def editor_turnos(request, slug):
     h = _hermandad_editor_por_slug(slug)
 
@@ -297,7 +512,7 @@ def editor_turnos(request, slug):
     )
 
 
-@staff_member_required(login_url="admin:login")
+@staff_member_required(login_url="web:administrativo_login")
 @require_POST
 def eliminar_turno(request, slug, turno_id):
     h = _hermandad_editor_por_slug(slug)

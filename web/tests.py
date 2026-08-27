@@ -1,11 +1,11 @@
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from hermandades.models import Devoto, EventoAgenda, Hermandad, ImagenHermandad, TurnoRecorrido
+from hermandades.models import CuentaDevoto, Devoto, EventoAgenda, Hermandad, ImagenHermandad, TurnoRecorrido
 
 
 class BaseProjectTestCase(TestCase):
@@ -177,6 +177,8 @@ class PublicViewsTests(BaseProjectTestCase):
             "celular": "5555-5555",
             "correo": "ana@example.com",
             "correo2": "ana@example.com",
+            "password1": "ClaveSegura123",
+            "password2": "ClaveSegura123",
             "medida_hombro_cm": "148.0",
             "acepta_privacidad": "on",
             "website": "",
@@ -228,6 +230,8 @@ class PublicViewsTests(BaseProjectTestCase):
             "celular": "5555-5555",
             "correo": "ana@example.com",
             "correo2": "otra@example.com",
+            "password1": "ClaveSegura123",
+            "password2": "ClaveSegura123",
             "acepta_privacidad": "on",
             "website": "",
         }
@@ -250,7 +254,7 @@ class AdminOnlyEditorTests(BaseProjectTestCase):
     def test_editor_redirects_anonymous_user_to_admin_login(self):
         response = self.client.get(reverse("web:editor_turnos", kwargs={"slug": self.hermandad.slug}))
         self.assertEqual(response.status_code, 302)
-        self.assertIn("/admin/login/", response.url)
+        self.assertIn(reverse("web:administrativo_login"), response.url)
 
     def test_staff_user_can_open_editor(self):
         user = get_user_model().objects.create_user(
@@ -349,3 +353,99 @@ class SeoTests(BaseProjectTestCase):
         self.assertContains(sitemap_response, self.hermandad.get_absolute_url())
         self.assertEqual(robots_response.status_code, 200)
         self.assertContains(robots_response, "Disallow: /admin/")
+
+
+class AccessAndOrganizationTypeTests(TestCase):
+    def setUp(self):
+        self.hermandad = Hermandad.objects.create(
+            nombre="Hermandad de prueba",
+            slug="hermandad-login-prueba",
+            tipo_organizacion=Hermandad.TIPO_HERMANDAD,
+            activa=True,
+        )
+        self.cofradia = Hermandad.objects.create(
+            nombre="Cofradía de prueba",
+            slug="cofradia-musica-prueba",
+            tipo_organizacion=Hermandad.TIPO_COFRADIA,
+            activa=True,
+        )
+
+    def test_labels_and_shoulder_measurement_depend_on_organization_type(self):
+        hermandad_response = self.client.get(
+            reverse("web:seccion_generica", kwargs={"slug": self.hermandad.slug, "seccion": "marchas"})
+        )
+        cofradia_response = self.client.get(
+            reverse("web:seccion_generica", kwargs={"slug": self.cofradia.slug, "seccion": "marchas"})
+        )
+        self.assertContains(hermandad_response, "Marchas")
+        self.assertContains(cofradia_response, "Repertorio de música festiva")
+
+        hermandad_registro = self.client.get(
+            reverse("web:seccion_generica", kwargs={"slug": self.hermandad.slug, "seccion": "registro-actualizacion-datos"})
+        )
+        cofradia_registro = self.client.get(
+            reverse("web:seccion_generica", kwargs={"slug": self.cofradia.slug, "seccion": "registro-actualizacion-datos"})
+        )
+        self.assertContains(hermandad_registro, 'id="id_medida_hombro_cm"')
+        self.assertNotContains(cofradia_registro, 'id="id_medida_hombro_cm"')
+        self.assertNotContains(cofradia_registro, "Medición visual")
+
+    def test_devoto_can_login_and_sees_welcome_panel(self):
+        cuenta = CuentaDevoto(correo="devoto@example.com")
+        cuenta.set_password("ClaveSegura123")
+        cuenta.save()
+        Devoto.objects.create(
+            cuenta=cuenta,
+            hermandad=self.hermandad,
+            dpi="1234567890123",
+            primer_nombre="Pablo",
+            primer_apellido="Prueba",
+            fecha_nacimiento=date(2000, 1, 1),
+            departamento="Sacatepéquez",
+            municipio="Antigua Guatemala",
+            celular="55555555",
+            correo="devoto@example.com",
+            acepta_privacidad=True,
+        )
+        response = self.client.post(
+            reverse("web:devoto_login"),
+            {"correo": "devoto@example.com", "password": "ClaveSegura123"},
+        )
+        self.assertRedirects(response, reverse("web:devoto_panel"))
+        panel = self.client.get(reverse("web:devoto_panel"))
+        self.assertEqual(panel.status_code, 200)
+        self.assertContains(panel, "Bienvenido, Pablo Prueba")
+        self.assertContains(panel, self.hermandad.nombre)
+        self.assertContains(panel, "Preferencias de comunicación")
+
+    def test_devoto_can_update_communication_preferences(self):
+        cuenta = CuentaDevoto(correo="preferencias@example.com")
+        cuenta.set_password("ClaveSegura123")
+        cuenta.save()
+        devoto = Devoto.objects.create(
+            cuenta=cuenta,
+            hermandad=self.hermandad,
+            dpi="1234567890456",
+            primer_nombre="María",
+            primer_apellido="Prueba",
+            fecha_nacimiento=date(1998, 1, 1),
+            departamento="Sacatepéquez",
+            municipio="Antigua Guatemala",
+            celular="55556666",
+            correo="preferencias@example.com",
+            acepta_privacidad=True,
+        )
+        session = self.client.session
+        session["cuenta_devoto_id"] = cuenta.pk
+        session.save()
+
+        response = self.client.post(
+            reverse("web:devoto_preferencias_comunicacion", kwargs={"devoto_id": devoto.pk}),
+            {"acepta_email": "on", "acepta_sms": "on", "acepta_whatsapp": "on"},
+        )
+        self.assertRedirects(response, reverse("web:devoto_panel"))
+        devoto.refresh_from_db()
+        self.assertTrue(devoto.acepta_email)
+        self.assertTrue(devoto.acepta_sms)
+        self.assertTrue(devoto.acepta_whatsapp)
+        self.assertTrue(devoto.acepta_comunicaciones)

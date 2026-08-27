@@ -107,13 +107,19 @@
             <article class="content-card marcha-card"><h3>{{ marcha.titulo }}</h3>{% if marcha.compositor %}<p><strong>Compositor:</strong> {{ marcha.compositor }}</p>{% endif %}{% if marcha.descripcion %}<p>{{ marcha.descripcion }}</p>{% endif %}{% if marcha.audio %}<audio controls preload="metadata"><source src="{{ marcha.audio.url }}">Tu navegador no puede reproducir este audio.</audio>{% endif %}{% if marcha.enlace %}<a class="external-link" href="{{ marcha.enlace }}" target="_blank" rel="noopener noreferrer">Escuchar en enlace externo ↗</a>{% endif %}</article>
           {% endfor %}
         </div>
-      {% else %}<p class="empty-state">Todavía no hay marchas publicadas.</p>{% endif %}
+      {% else %}<p class="empty-state">Todavía no hay contenido publicado en {{ h.etiqueta_musica|lower }}.</p>{% endif %}
 
     {% elif seccion == "registro-actualizacion-datos" %}
       <div class="registro-shell" style="--accent:{{ h.color_acento|default:'#d4af37' }};--primary:{{ h.color_primario|default:'#111111' }};">
-        <div class="registro-heading"><span class="registro-kicker">Portal del devoto</span><h3>Registro</h3><p>Completa tus datos y registra la referencia visual hasta el hombro.</p></div>
+        <div class="registro-heading">
+          {% if h.es_hermandad %}
+            <p>Completa tus datos y registra la referencia visual hasta el hombro.</p>
+          {% else %}
+            <p>Completa tus datos para registrarte como devoto y crear tu acceso personal.</p>
+          {% endif %}
+        </div>
         <form class="registro-form" id="registroForm" method="post" novalidate>
-          {% csrf_token %}{{ form.website }}{{ form.medida_hombro_cm }}
+          {% csrf_token %}{{ form.website }}{% if h.es_hermandad %}{{ form.medida_hombro_cm }}{% endif %}
           {% if form.non_field_errors %}<div class="form-error-summary">{{ form.non_field_errors }}</div>{% endif %}
           <div class="form-grid">
             <label><span>DPI</span>{{ form.dpi }}{% for error in form.dpi.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
@@ -134,16 +140,29 @@
             <label><span>Celular</span>{{ form.celular }}{% for error in form.celular.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
             <label><span>Correo</span>{{ form.correo }}{% for error in form.correo.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
             <label><span>Verifique correo</span>{{ form.correo2 }}{% for error in form.correo2.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
+            <label><span>Contraseña</span>{{ form.password1 }}{% for error in form.password1.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
+            <label><span>Confirmar contraseña</span>{{ form.password2 }}{% for error in form.password2.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
 
-            <section class="measurement-card full-row"><div><span class="registro-kicker">Medición visual</span><h4>Altura hasta el hombro</h4><p>Abre la cámara e indica la altura total de la persona para calibrar la imagen. Luego marca suelo, cabeza y hombro. El sistema guardará el resultado en centímetros y lo mostrará también en metros, por ejemplo: 1.48 m (148.0 cm).</p></div><div class="measure-actions"><button class="measure-button" type="button" id="openMeasure">Abrir cámara</button><label class="measure-value"><span>Medida registrada</span><input id="medidaHombroVisual" placeholder="Pendiente" readonly></label>{% for error in form.medida_hombro_cm.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</div></section>
+            {% if h.es_hermandad %}
+              <section class="measurement-card full-row"><div><span class="registro-kicker">Medición visual</span><h4>Altura hasta el hombro</h4><p>Abre la cámara e indica la altura total de la persona para calibrar la imagen. Luego marca suelo, cabeza y hombro. El sistema guardará el resultado en centímetros y lo mostrará también en metros, por ejemplo: 1.48 m (148.0 cm).</p></div><div class="measure-actions"><button class="measure-button" type="button" id="openMeasure">Abrir cámara</button><label class="measure-value"><span>Medida registrada</span><input id="medidaHombroVisual" placeholder="Pendiente" readonly></label>{% for error in form.medida_hombro_cm.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</div></section>
+            {% endif %}
 
             <label class="privacy-row full-row">{{ form.acepta_privacidad }}<span>{{ form.acepta_privacidad.label }}</span>{% for error in form.acepta_privacidad.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
+            <div class="full-row communication-consent">
+              <strong>Canales de comunicación autorizados</strong>
+              <small>Puedes elegir uno, varios o ninguno. La organización utilizará únicamente los canales que autorices.</small>
+            </div>
+            <label class="privacy-row full-row">{{ form.acepta_email }}<span>{{ form.acepta_email.label }}</span>{% for error in form.acepta_email.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
+            <label class="privacy-row full-row">{{ form.acepta_sms }}<span>{{ form.acepta_sms.label }}</span>{% for error in form.acepta_sms.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
+            <label class="privacy-row full-row">{{ form.acepta_whatsapp }}<span>{{ form.acepta_whatsapp.label }}</span>{% for error in form.acepta_whatsapp.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
           </div>
           <div class="form-actions"><button type="reset" class="btn-secondary">Borrar</button><button type="submit" class="btn-primary">Guardar registro</button></div>
         </form>
       </div>
 
+      {% if h.es_hermandad %}
       <dialog id="measureDialog" class="measure-dialog"><div class="measure-header"><div><strong>Medir hasta el hombro</strong><small id="measureHelp">Ingresa la altura total de la persona y toca el suelo.</small></div><button type="button" id="closeMeasure" aria-label="Cerrar">×</button></div><div class="measure-calibration"><label><span>Altura total de la persona (cm)</span><input type="number" id="alturaRealCm" min="80" max="230" step="0.1" inputmode="decimal" placeholder="Ej. 170"></label><small>Esta altura se usa como referencia para convertir la distancia de la imagen a centímetros.</small></div><div class="camera-stage" id="cameraStage"><video id="measureVideo" playsinline autoplay muted></video><canvas id="measureCanvas"></canvas><div class="shoulder-guide">HOMBRO</div></div><div class="measure-footer"><div class="measure-result"><strong id="measureDistance">Sin medición</strong><small id="measurePixels">Calibración pendiente</small></div><button type="button" id="resetMeasure">Reiniciar</button><button type="button" id="saveMeasure" disabled>Usar medida</button></div></dialog>
+      {% endif %}
 
     {% else %}<p class="empty-state">Esta sección todavía no está disponible.</p>{% endif %}
   </div>

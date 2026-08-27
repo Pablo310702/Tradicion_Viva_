@@ -197,8 +197,9 @@ def generar_comprobante_devoto(stream, devoto, qr_url):
         ("APELLIDOS", " ".join(filter(None, [devoto.primer_apellido, devoto.otros_apellidos]))),
         ("FECHA NAC.", devoto.fecha_nacimiento.strftime("%d/%m/%Y")),
         ("UBICACION", f"{devoto.municipio}, {devoto.departamento}"),
-        ("MEDIDA HOMBRO", medida_text),
     ]
+    if devoto.hermandad.es_hermandad:
+        rows.append(("MEDIDA HOMBRO", medida_text))
     for index, (label, value) in enumerate(rows):
         row_y = table_y - index * row_h
         pdf.setFillColor(light_gray)

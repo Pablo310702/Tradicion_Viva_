@@ -165,6 +165,44 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", default=False)
     SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD", default=False)
 
+# Correo electrónico. Por defecto se imprime en consola para desarrollo.
+# Para envíos reales configura un servidor SMTP en el archivo .env.
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend",
+)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", default=True)
+EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", default=False)
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "TRADICIÓN VIVA <no-reply@tradicionviva.local>")
+
+# Comunicaciones SMS / WhatsApp.
+# SMS se envía con Twilio Programmable Messaging y WhatsApp con la API oficial
+# WhatsApp Business Cloud de Meta. Todas las credenciales se mantienen en .env.
+DEFAULT_PHONE_COUNTRY_CODE = os.environ.get("DEFAULT_PHONE_COUNTRY_CODE", "+502")
+MESSAGING_HTTP_TIMEOUT = int(os.environ.get("MESSAGING_HTTP_TIMEOUT", "15"))
+PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").strip().rstrip("/")
+
+TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "")
+TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "")
+TWILIO_API_KEY_SID = os.environ.get("TWILIO_API_KEY_SID", "")
+TWILIO_API_KEY_SECRET = os.environ.get("TWILIO_API_KEY_SECRET", "")
+TWILIO_FROM_NUMBER = os.environ.get("TWILIO_FROM_NUMBER", "")
+TWILIO_MESSAGING_SERVICE_SID = os.environ.get("TWILIO_MESSAGING_SERVICE_SID", "")
+TWILIO_STATUS_CALLBACK_URL = os.environ.get("TWILIO_STATUS_CALLBACK_URL", "")
+TWILIO_VALIDATE_WEBHOOKS = env_bool("TWILIO_VALIDATE_WEBHOOKS", default=True)
+
+WHATSAPP_GRAPH_API_VERSION = os.environ.get("WHATSAPP_GRAPH_API_VERSION", "v25.0")
+WHATSAPP_ACCESS_TOKEN = os.environ.get("WHATSAPP_ACCESS_TOKEN", "")
+WHATSAPP_PHONE_NUMBER_ID = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "")
+WHATSAPP_DEFAULT_TEMPLATE_NAME = os.environ.get("WHATSAPP_DEFAULT_TEMPLATE_NAME", "tradicion_viva_comunicado")
+WHATSAPP_DEFAULT_TEMPLATE_LANGUAGE = os.environ.get("WHATSAPP_DEFAULT_TEMPLATE_LANGUAGE", "es")
+WHATSAPP_VERIFY_TOKEN = os.environ.get("WHATSAPP_VERIFY_TOKEN", "")
+WHATSAPP_APP_SECRET = os.environ.get("WHATSAPP_APP_SECRET", "")
+
 # Traccar: no se incluyen usuarios, contraseñas ni identificadores reales en el código.
 TRACCAR_BASE_URL = os.environ.get("TRACCAR_BASE_URL", "https://demo.traccar.org").rstrip("/")
 TRACCAR_USERNAME = os.environ.get("TRACCAR_USERNAME", "")

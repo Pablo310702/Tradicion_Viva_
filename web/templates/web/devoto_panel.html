@@ -1,0 +1,201 @@
+{% extends "web/base.html" %}
+{% block title %}Mi cuenta | TRADICIÓN VIVA{% endblock %}
+{% block topbar_style %}style="background:#d4af37;"{% endblock %}
+{% block header_actions %}
+<form method="post" action="{% url 'web:devoto_logout' %}" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);">{% csrf_token %}<button type="submit" style="border:1px solid #333;background:#111;color:#fff;border-radius:999px;padding:10px 14px;font-weight:800;cursor:pointer;">Cerrar sesión</button></form>
+{% endblock %}
+{% block extra_css %}
+<style>
+  .welcome{
+    background:#151515;
+    color:#fff;
+    border-top:5px solid #d4af37;
+    border-radius:12px;
+    padding:30px;
+    margin-bottom:24px;
+    box-shadow:0 15px 35px rgba(0,0,0,.25);
+  }
+
+  .welcome h1{
+    margin:0 0 12px;
+    color:#d4af37;
+    font-family:Georgia,serif;
+  }
+
+  .welcome p{
+    font-family:Georgia,serif;
+    font-size:19px;
+    line-height:1.65;
+    margin:0;
+    color:#ddd;
+  }
+
+  .records{
+    display:grid;
+    gap:16px;
+  }
+
+  .record{
+    background:#151515;
+    border:1px solid #303030;
+    border-radius:16px;
+    padding:22px;
+  }
+
+  .record h2{
+    margin:0 0 10px;
+    color:#d4af37;
+  }
+
+  .record p{
+    margin:6px 0;
+    color:#c7c7c7;
+    line-height:1.55;
+  }
+
+  .record-meta{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px 16px;
+    margin:16px 0;
+  }
+
+  .record-meta span{
+    background:#101010;
+    border:1px solid #2b2b2b;
+    border-radius:10px;
+    padding:10px;
+    color:#ddd;
+  }
+
+  .record-actions a{
+    display:inline-block;
+    background:#d4af37;
+    color:#000;
+    padding:10px 14px;
+    border-radius:9px;
+    font-weight:800;
+    text-decoration:none;
+    transition:.2s;
+  }
+
+  .record-actions a:hover{
+    background:#c9a13b;
+    transform:translateY(-1px);
+  }
+
+  .empty{
+    padding:24px;
+    text-align:center;
+    border:1px dashed #555;
+    border-radius:14px;
+    color:#aaa;
+    background:#101010;
+  }
+
+  .comm-prefs{
+    margin-top:18px;
+    padding:16px;
+    border:1px solid #303030;
+    border-radius:12px;
+    background:#101010;
+  }
+
+  .comm-prefs h3{
+    margin:0 0 6px;
+    color:#d4af37;
+  }
+
+  .comm-prefs > p{
+    margin:0 0 12px;
+    color:#aaa;
+    font-size:14px;
+  }
+
+  .comm-options{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px 18px;
+    margin-bottom:12px;
+  }
+
+  .comm-options label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    color:#ddd;
+    font-weight:700;
+  }
+
+  .comm-options input{
+    width:18px;
+    height:18px;
+    accent-color:#d4af37;
+  }
+
+  .comm-prefs button{
+    border:1px solid #d4af37;
+    background:#d4af37;
+    color:#000;
+    border-radius:9px;
+    padding:10px 14px;
+    font-weight:800;
+    cursor:pointer;
+    transition:.2s;
+  }
+
+  .comm-prefs button:hover{
+    background:#c9a13b;
+    border-color:#c9a13b;
+  }
+
+  @media(max-width:650px){
+    .record-meta{
+      grid-template-columns:1fr;
+    }
+
+    .welcome{
+      padding:22px;
+    }
+
+    .welcome p{
+      font-size:17px;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<section class="welcome">
+  <h1>Bienvenido, {{ nombre_devoto }}</h1>
+  <p>Gracias por formar parte de TRADICIÓN VIVA. Desde este espacio puedes consultar tus inscripciones y la información asociada a cada hermandad o cofradía en la que te has registrado.</p>
+</section>
+
+<section class="records">
+  {% for devoto in inscripciones %}
+    <article class="record">
+      <h2>{{ devoto.hermandad.nombre }}</h2>
+      <p><strong>{{ devoto.hermandad.etiqueta_organizacion }}:</strong> agradecemos tu inscripción y participación. Aquí encontrarás la información correspondiente a tu registro.</p>
+      <div class="record-meta">
+        <span><strong>Correo:</strong><br>{{ devoto.correo }}</span>
+        <span><strong>Celular:</strong><br>{{ devoto.celular }}</span>
+        <span><strong>Registro:</strong><br>{{ devoto.creado_en|date:"d/m/Y H:i" }}</span>
+        {% if devoto.hermandad.es_hermandad and devoto.medida_hombro_cm %}<span><strong>Medida hasta el hombro:</strong><br>{{ devoto.medida_hombro_cm }} cm</span>{% endif %}
+      </div>
+      <div class="record-actions"><a href="{% url 'web:comprobante_devoto' devoto.hermandad.slug devoto.comprobante_codigo %}">Descargar comprobante</a></div>
+      <form class="comm-prefs" method="post" action="{% url 'web:devoto_preferencias_comunicacion' devoto.id %}">
+        {% csrf_token %}
+        <h3>Preferencias de comunicación</h3>
+        <p>Elige por qué medios autorizas recibir saludos, avisos e información de esta organización. Puedes cambiarlo cuando quieras.</p>
+        <div class="comm-options">
+          <label><input type="checkbox" name="acepta_email" {% if devoto.acepta_email %}checked{% endif %}> Correo</label>
+          <label><input type="checkbox" name="acepta_sms" {% if devoto.acepta_sms %}checked{% endif %}> SMS</label>
+          <label><input type="checkbox" name="acepta_whatsapp" {% if devoto.acepta_whatsapp %}checked{% endif %}> WhatsApp</label>
+        </div>
+        <button type="submit">Guardar preferencias</button>
+      </form>
+    </article>
+  {% empty %}
+    <div class="empty">Tu cuenta todavía no tiene inscripciones asociadas.</div>
+  {% endfor %}
+</section>
+{% endblock %}

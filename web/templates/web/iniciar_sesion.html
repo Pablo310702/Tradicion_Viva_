@@ -1,0 +1,232 @@
+{% extends "web/base.html" %}
+
+{% block title %}Iniciar sesión | TRADICIÓN VIVA{% endblock %}
+
+{% block topbar_style %}style="background:#d4af37;"{% endblock %}
+
+{% block header_actions %}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .access-shell{
+    max-width:820px;
+    margin:35px auto 60px;
+  }
+
+  .access-title{
+    text-align:center;
+    margin-bottom:32px;
+  }
+
+  .access-title h1{
+    font-size:34px;
+    margin:0 0 10px;
+    color:#fff;
+  }
+
+  .access-title p{
+    color:#bdbdbd;
+    margin:0;
+    font-size:17px;
+  }
+
+  .access-title::after{
+    content:"";
+    display:block;
+    width:75px;
+    height:3px;
+    background:#d4af37;
+    margin:22px auto 0;
+    border-radius:999px;
+  }
+
+  .access-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+  }
+
+  .access-card{
+    display:flex;
+    flex-direction:column;
+    gap:13px;
+    padding:30px;
+    border:1px solid #303030;
+    border-radius:14px;
+    background:#151515;
+    color:#fff;
+    text-decoration:none;
+    box-shadow:0 16px 34px rgba(0,0,0,.24);
+    transition:.2s;
+  }
+
+  .access-card:hover{
+    transform:translateY(-3px);
+    border-color:#d4af37;
+    box-shadow:0 18px 40px rgba(0,0,0,.4);
+  }
+
+  .access-icon{
+    font-size:34px;
+  }
+
+  .access-card h2{
+    margin:0;
+    font-size:24px;
+    color:#d4af37;
+  }
+
+  .access-card p{
+    margin:0;
+    color:#bbb;
+    line-height:1.55;
+    flex-grow:1;
+  }
+
+  .access-button{
+    margin-top:12px;
+    display:inline-flex;
+    justify-content:center;
+    align-items:center;
+    background:#d4af37;
+    color:#000;
+    border:1px solid #d4af37;
+    border-radius:8px;
+    padding:13px 16px;
+    font-weight:900;
+    transition:.2s;
+  }
+
+  .access-card:hover .access-button{
+    background:#c9a13b;
+    border-color:#c9a13b;
+  }
+
+  .back-home-wrapper{
+    text-align:center;
+    margin-top:28px;
+  }
+
+  .back-home{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:11px 22px;
+    border:1px solid #d4af37;
+    border-radius:8px;
+    background:#151515;
+    color:#d4af37;
+    font-weight:700;
+    text-decoration:none;
+    transition:.2s;
+  }
+
+  .back-home:hover{
+    background:#d4af37;
+    color:#000;
+    transform:translateY(-1px);
+  }
+
+  @media(max-width:650px){
+
+    .access-shell{
+      margin:25px 15px 45px;
+    }
+
+    .access-grid{
+      grid-template-columns:1fr;
+    }
+
+    .access-title h1{
+      font-size:28px;
+    }
+
+    .access-card{
+      padding:25px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<section class="access-shell">
+
+  <div class="access-title">
+
+    <h1>Iniciar sesión</h1>
+
+    <p>
+      Selecciona el tipo de acceso que deseas utilizar.
+    </p>
+
+  </div>
+
+  <div class="access-grid">
+
+    <a
+      class="access-card"
+      href="{% url 'web:devoto_login' %}"
+    >
+
+      <span class="access-icon">
+        👤
+      </span>
+
+      <h2>
+        Devoto
+      </h2>
+
+      <p>
+        Consulta tus registros, organizaciones y comprobantes
+        desde tu cuenta personal.
+      </p>
+
+      <span class="access-button">
+        Ingresar como devoto
+      </span>
+
+    </a>
+
+
+    <a
+      class="access-card"
+      href="{% url 'web:administrativo_login' %}"
+    >
+
+      <span class="access-icon">
+        🔐
+      </span>
+
+      <h2>
+        Administrativo
+      </h2>
+
+      <p>
+        Acceso reservado para la gestión de hermandades,
+        cofradías, agenda, contenido y devotos.
+      </p>
+
+      <span class="access-button">
+        Ingresar al administrador
+      </span>
+
+    </a>
+
+  </div>
+
+
+  <div class="back-home-wrapper">
+
+    <a
+      class="back-home"
+      href="{% url 'web:home' %}"
+    >
+      ← Regresar a la página principal
+    </a>
+
+  </div>
+
+</section>
+
+{% endblock %} 

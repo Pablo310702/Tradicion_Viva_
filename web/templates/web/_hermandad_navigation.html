@@ -2,7 +2,7 @@
   <a class="org-menu-link" href="{% url 'web:hermandad_detalle' h.slug %}">Inicio</a>
 
   <div class="org-menu-item">
-    <span class="org-menu-link">{% if h.slug == "san-jose" or h.slug == "rosario-merced" %}Cofradía{% else %}Hermandad{% endif %} ▼</span>
+    <span class="org-menu-link">{{ h.etiqueta_organizacion }} ▼</span>
     <div class="org-dropdown">
       <a href="{% url 'web:seccion_generica' h.slug 'mision-vision' %}">Misión y Visión</a>
       <a href="{% url 'web:seccion_generica' h.slug 'nuestras-imagenes' %}">Nuestras Imágenes</a>
@@ -17,7 +17,7 @@
     <div class="org-dropdown">
       <a href="{% url 'web:seccion_generica' h.slug 'galeria-fotos' %}">Galería de fotos</a>
       <a href="{% url 'web:seccion_generica' h.slug 'galeria-filmica' %}">Galería fílmica</a>
-      <a href="{% url 'web:seccion_generica' h.slug 'marchas' %}">Marchas</a>
+      <a href="{% url 'web:seccion_generica' h.slug 'marchas' %}">{{ h.etiqueta_musica }}</a>
     </div>
   </div>
 
@@ -32,6 +32,11 @@
     <span class="org-menu-link">Devotos ▼</span>
     <div class="org-dropdown">
       <a href="{% url 'web:seccion_generica' h.slug 'registro-actualizacion-datos' %}">Registro</a>
+      {% if request.session.cuenta_devoto_id %}
+        <a href="{% url 'web:devoto_panel' %}">Mi cuenta</a>
+      {% else %}
+        <a href="{% url 'web:devoto_login' %}">Iniciar sesión</a>
+      {% endif %}
     </div>
   </div>
 </nav>
@@ -50,7 +55,7 @@
     <a href="{% url 'web:hermandad_detalle' h.slug %}">Inicio</a>
 
     <details>
-      <summary>{% if h.slug == "san-jose" or h.slug == "rosario-merced" %}Cofradía{% else %}Hermandad{% endif %}</summary>
+      <summary>{{ h.etiqueta_organizacion }}</summary>
       <div class="org-drawer-submenu">
         <a href="{% url 'web:seccion_generica' h.slug 'mision-vision' %}">Misión y Visión</a>
         <a href="{% url 'web:seccion_generica' h.slug 'nuestras-imagenes' %}">Nuestras Imágenes</a>
@@ -65,7 +70,7 @@
       <div class="org-drawer-submenu">
         <a href="{% url 'web:seccion_generica' h.slug 'galeria-fotos' %}">Galería de fotos</a>
         <a href="{% url 'web:seccion_generica' h.slug 'galeria-filmica' %}">Galería fílmica</a>
-        <a href="{% url 'web:seccion_generica' h.slug 'marchas' %}">Marchas</a>
+        <a href="{% url 'web:seccion_generica' h.slug 'marchas' %}">{{ h.etiqueta_musica }}</a>
       </div>
     </details>
 
@@ -78,7 +83,14 @@
 
     <details>
       <summary>Devotos</summary>
-      <div class="org-drawer-submenu"><a href="{% url 'web:seccion_generica' h.slug 'registro-actualizacion-datos' %}">Registro</a></div>
+      <div class="org-drawer-submenu">
+        <a href="{% url 'web:seccion_generica' h.slug 'registro-actualizacion-datos' %}">Registro</a>
+        {% if request.session.cuenta_devoto_id %}
+          <a href="{% url 'web:devoto_panel' %}">Mi cuenta</a>
+        {% else %}
+          <a href="{% url 'web:devoto_login' %}">Iniciar sesión</a>
+        {% endif %}
+      </div>
     </details>
   </div>
 </aside>

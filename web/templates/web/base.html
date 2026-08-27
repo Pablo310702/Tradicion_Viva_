@@ -72,6 +72,14 @@
       gap:12px;
     }
 
+
+    .session-link{
+      position:absolute;right:16px;top:50%;transform:translateY(-50%);
+      display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;
+      border:1px solid #333;background:#111;color:#fff;font-size:14px;font-weight:800;text-decoration:none;
+    }
+    .session-link:hover{border-color:var(--gold);color:#fff;}
+
     .brand-logo{
       height:45px;
       width:auto;
@@ -308,7 +316,9 @@
       <div class="brand">
         {% block brand %}<span>TRADICIÓN VIVA</span>{% endblock %}
       </div>
-      {% block header_actions %}{% endblock %}
+      {% block header_actions %}
+        <a class="session-link" href="{% url 'web:iniciar_sesion' %}">🔒 Iniciar sesión</a>
+      {% endblock %}
     </div>
   </header>
 
