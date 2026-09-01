@@ -1,237 +1,3003 @@
 {% extends "web/base.html" %}
 
 {% block title %}{{ titulo_seccion }} | {{ h.nombre }}{% endblock %}
-{% block meta_description %}{{ titulo_seccion }} de {{ h.nombre }} en TRADICIÓN VIVA.{% endblock %}
+
+{% block meta_description %}
+{{ titulo_seccion }} de {{ h.nombre }} en TRADICIÓN VIVA.
+{% endblock %}
+
+
 {% block social_meta %}
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="TRADICIÓN VIVA">
   <meta property="og:title" content="{{ titulo_seccion }} | {{ h.nombre }}">
   <meta property="og:description" content="Consulta {{ titulo_seccion|lower }} de {{ h.nombre }}.">
   <meta property="og:url" content="{{ request.build_absolute_uri }}">
-  {% if h.portada %}<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ h.portada.url }}">{% endif %}
-  <meta name="twitter:card" content="{% if h.portada %}summary_large_image{% else %}summary{% endif %}">
+
+  {% if h.portada %}
+    <meta
+      property="og:image"
+      content="{{ request.scheme }}://{{ request.get_host }}{{ h.portada.url }}"
+    >
+  {% endif %}
+
+  <meta
+    name="twitter:card"
+    content="{% if h.portada %}summary_large_image{% else %}summary{% endif %}"
+  >
 {% endblock %}
 
-{% block topbar_style %}style="background: {{ h.color_acento|default:'#d4af37' }};"{% endblock %}
+
+{% block topbar_style %}
+style="background: var(--theme-accent, #d4af37);"
+{% endblock %}
 
 {% block brand %}
-<a href="{% url 'web:home' %}" style="display:flex;align-items:center;gap:10px;">
-    {% if h.logo %}<img src="{{ h.logo.url }}" style="height:40px;border-radius:8px;" alt="Logo de {{ h.nombre }}">{% endif %}
+<a
+  href="{% url 'web:home' %}"
+  style="display:flex;align-items:center;gap:10px;"
+>
+    {% if h.logo %}
+      <img
+        src="{{ h.logo.url }}"
+        style="height:40px;border-radius:8px;"
+        alt="Logo de {{ h.nombre }}"
+      >
+    {% endif %}
+
     {{ h.nombre }}
 </a>
 {% endblock %}
 
+
 {% block header_actions %}
-<button class="org-menu-toggle" id="orgMenuToggle" type="button" aria-label="Abrir menú" aria-controls="orgMenuDrawer" aria-expanded="false">
-  <span></span><span></span><span></span>
+<button
+  class="org-menu-toggle"
+  id="orgMenuToggle"
+  type="button"
+  aria-label="Abrir menú"
+  aria-controls="orgMenuDrawer"
+  aria-expanded="false"
+>
+  <span></span>
+  <span></span>
+  <span></span>
 </button>
 {% endblock %}
 
+
 {% block extra_css %}
+
+
+{% if h.slug == "rosario-merced" or "Rosario" in h.nombre %}
 <style>
-  .bloque{background:#151515;border:1px solid #2a2a2a;border-radius:16px;padding:28px;box-shadow:0 12px 28px rgba(0,0,0,.25)}
-  .titulo-seccion{font-size:34px;font-weight:900;margin:0 0 10px;text-align:center}.subtitulo{text-align:center;color:#bdbdbd;margin:0 0 24px;font-size:18px}.linea{width:120px;height:3px;background:{{ h.color_acento|default:'#d4af37' }};margin:0 auto 30px;border-radius:999px}
-  .contenido{color:#d0d0d0;font-size:17px;line-height:1.7}.contenido h3{color:#fff;margin-top:0}.contenido p,.institution-panel p{text-align:justify;text-justify:inter-word;hyphens:auto}.empty-state{border:1px dashed #444;border-radius:14px;padding:22px;text-align:center!important;color:#aaa;background:#111}
-  .content-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.content-card{background:#101010;border:1px solid #303030;border-radius:16px;overflow:hidden;box-shadow:0 10px 26px rgba(0,0,0,.22)}.content-card-media{position:relative;display:block;width:100%;aspect-ratio:1/1;overflow:hidden;background:#080808}.content-card-media img{width:100%;height:100%;object-fit:cover;object-position:center;display:block;transition:transform .25s ease}.content-card:hover .content-card-media img{transform:scale(1.018)}.image-credit-overlay{position:absolute;left:0;right:0;bottom:0;padding:36px 12px 11px;background:linear-gradient(transparent,rgba(0,0,0,.82));color:#fff;font-size:12px;font-style:italic;line-height:1.35;text-shadow:0 1px 4px rgba(0,0,0,.85)}.content-card-body{padding:16px 17px 18px}.content-card h3{font-size:19px;margin:0 0 9px;line-height:1.35}.content-card p{margin:0;color:#bbb;text-align:justify;text-justify:inter-word;hyphens:auto}.image-author{display:block;margin-top:12px;padding-top:10px;border-top:1px solid #292929;color:{{ h.color_acento|default:'#d4af37' }};font-size:13px;font-weight:700}.video-frame{aspect-ratio:16/9;width:100%;border:0;display:block;background:#050505}.marcha-card{padding:18px}.marcha-card audio{width:100%;margin-top:12px}.external-link{display:inline-block;margin-top:12px;color:{{ h.color_acento|default:'#d4af37' }};font-weight:800}
-  .institution-block{display:grid;grid-template-columns:1fr 1fr;gap:18px}.institution-panel{background:#101010;border:1px solid #303030;border-radius:14px;padding:20px}.institution-panel h3{color:{{ h.color_acento|default:'#d4af37' }}}
-
-  .registro-shell{max-width:940px;margin:auto;color:#f4f4f4}.registro-heading{text-align:center;margin-bottom:24px}.registro-heading h3{font-size:32px;margin:4px 0 6px}.registro-heading p{margin:0;color:#bbb}.registro-kicker{display:inline-block;color:var(--accent);font-size:12px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}
-  .registro-form{background:#101010;border:1px solid #2b2b2b;border-top:4px solid var(--accent);border-radius:18px;padding:24px;box-shadow:0 20px 50px rgba(0,0,0,.28)}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 20px}.form-grid>label,.date-grid label,.measure-value{display:flex;flex-direction:column;gap:7px}.form-grid label>span,.date-grid label>span,.measure-value span,fieldset legend{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#cfcfcf}
-  .form-grid input:not([type="radio"]):not([type="checkbox"]){width:100%;height:44px;border-radius:999px;border:1px solid #4a4a4a;background:#191919;color:#fff;padding:0 16px;outline:none;transition:.15s}.form-grid input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}.full-row{grid-column:1/-1}
-  fieldset{border:1px solid #303030;border-radius:14px;padding:15px 16px;margin:0}fieldset legend{padding:0 8px}.date-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-  .field-error{color:#ffaaaa;font-size:12px;margin-top:3px}.form-error-summary{background:#3a1717;border:1px solid #8f3b3b;color:#ffe2e2;padding:12px 14px;border-radius:12px;margin-bottom:16px}.privacy-row{display:flex!important;flex-direction:row!important;align-items:flex-start;gap:10px!important;background:#151515;border:1px solid #303030;border-radius:12px;padding:14px}.privacy-row input{margin-top:5px;accent-color:var(--accent)}.privacy-row span{text-transform:none!important;letter-spacing:0!important;font-size:13px!important;line-height:1.5}
-  .measurement-card{display:flex;justify-content:space-between;gap:20px;align-items:center;background:linear-gradient(135deg,var(--primary),#171717);border:1px solid color-mix(in srgb,var(--accent) 45%,#333);border-radius:16px;padding:20px}.measurement-card h4{font-size:22px;margin:4px 0}.measurement-card p{margin:0;color:#c5c5c5;max-width:570px}.measure-actions{min-width:220px;display:flex;flex-direction:column;gap:10px}
-  button{font:inherit}.measure-button,.btn-primary{border:0;border-radius:999px;background:var(--accent);color:#111;font-weight:900;padding:12px 18px;cursor:pointer}.btn-secondary{border:1px solid #4a4a4a;border-radius:999px;background:#181818;color:#fff;font-weight:800;padding:11px 18px;cursor:pointer}.form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
-  .measure-dialog{width:min(780px,96vw);padding:0;border:1px solid #444;border-radius:20px;background:#0d0d0d;color:#fff;overflow:hidden}.measure-dialog::backdrop{background:rgba(0,0,0,.78);backdrop-filter:blur(4px)}.measure-header,.measure-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:#151515}.measure-header div{display:flex;flex-direction:column}.measure-header small{color:#bbb}.measure-header button{border:0;background:transparent;color:#fff;font-size:30px;cursor:pointer}.measure-calibration{display:flex;align-items:end;gap:12px;padding:12px 16px;background:#101010;border-top:1px solid #262626;border-bottom:1px solid #262626}.measure-calibration label{display:flex;flex-direction:column;gap:5px;flex:1}.measure-calibration label span{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#ccc}.measure-calibration input{height:40px;border-radius:10px;border:1px solid #454545;background:#1a1a1a;color:#fff;padding:0 12px;outline:none}.measure-calibration input:focus{border-color:var(--accent)}.measure-calibration small{max-width:320px;color:#aaa;line-height:1.35}.camera-stage{position:relative;background:#050505;aspect-ratio:3/4;max-height:62vh;overflow:hidden;touch-action:none}.camera-stage video,.camera-stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.camera-stage canvas{z-index:2}.shoulder-guide{position:absolute;z-index:1;right:12px;top:30%;font-size:11px;letter-spacing:.16em;color:rgba(255,255,255,.65);border-top:1px dashed rgba(255,255,255,.45);width:36%;padding-top:5px;text-align:right}.measure-result{display:flex;flex-direction:column;gap:2px}.measure-result strong{font-size:14px}.measure-result small{color:#aaa}.measure-footer button{border:1px solid #555;background:#222;color:#fff;border-radius:999px;padding:9px 14px;cursor:pointer}.measure-footer button:last-child{background:var(--accent);color:#111;border:0;font-weight:900}.measure-footer button:disabled{opacity:.4;cursor:not-allowed}
-
-  @media (max-width:768px){.content-grid,.form-grid,.institution-block{grid-template-columns:1fr}.content-card-media{aspect-ratio:4/3}.date-grid{grid-template-columns:1fr 1fr 1fr}.measurement-card{flex-direction:column;align-items:stretch}.measure-actions{min-width:0}.measure-calibration{flex-direction:column;align-items:stretch}.measure-calibration small{max-width:none}.registro-form{padding:16px}.bloque{padding:20px 14px}}
+  :root {
+    --theme-page: #fff7fa;
+    --theme-surface: #ffffff;
+    --theme-surface-2: #fbe8ef;
+    --theme-header: #f4d7e1;
+    --theme-header-text: #4a3039;
+    --theme-text: #4a3039;
+    --theme-muted: #816771;
+    --theme-border: #e8c9d4;
+    --theme-accent: #c9879e;
+    --theme-accent-strong: #a85f79;
+    --theme-on-accent: #ffffff;
+    --theme-shadow: rgba(112, 67, 83, .12);
+  }
 </style>
+
+{% elif h.slug == "san-jose" or "San José" in h.nombre or "San Jose" in h.nombre %}
+<style>
+  :root {
+    --theme-page: #f4faf5;
+    --theme-surface: #ffffff;
+    --theme-surface-2: #e6f1e8;
+    --theme-header: #dcebdd;
+    --theme-header-text: #253a2b;
+    --theme-text: #253a2b;
+    --theme-muted: #66786b;
+    --theme-border: #c8ddcd;
+    --theme-accent: #5f8568;
+    --theme-accent-strong: #3f684b;
+    --theme-on-accent: #ffffff;
+    --theme-shadow: rgba(49, 91, 59, .12);
+  }
+</style>
+
+{% elif "Calvario" in h.nombre %}
+<style>
+  :root {
+    --theme-page: #090909;
+    --theme-surface: #141414;
+    --theme-surface-2: #1b1b1b;
+    --theme-header: #050505;
+    --theme-header-text: #ffffff;
+    --theme-text: #f5f5f5;
+    --theme-muted: #bdbdbd;
+    --theme-border: #34302a;
+    --theme-accent: #d4af37;
+    --theme-accent-strong: #b48b18;
+    --theme-on-accent: #111111;
+    --theme-shadow: rgba(0, 0, 0, .28);
+  }
+</style>
+
+{% elif "Desamparo" in h.nombre %}
+<style>
+  :root {
+    --theme-page: #fffdf7;
+    --theme-surface: #ffffff;
+    --theme-surface-2: #f8f1dc;
+    --theme-header: #ffffff;
+    --theme-header-text: #3d3526;
+    --theme-text: #3d3526;
+    --theme-muted: #786f5d;
+    --theme-border: #e5d4a5;
+    --theme-accent: #c4a035;
+    --theme-accent-strong: #9f7e1d;
+    --theme-on-accent: #ffffff;
+    --theme-shadow: rgba(110, 88, 28, .12);
+  }
+</style>
+
+{% elif "Soledad" in h.nombre %}
+<style>
+  :root {
+    --theme-page: #f7f5ef;
+    --theme-surface: #ffffff;
+    --theme-surface-2: #eeeae0;
+    --theme-header: #111111;
+    --theme-header-text: #ffffff;
+    --theme-text: #171717;
+    --theme-muted: #68645c;
+    --theme-border: #d8cfb9;
+    --theme-accent: #b58b2a;
+    --theme-accent-strong: #8f6b17;
+    --theme-on-accent: #ffffff;
+    --theme-shadow: rgba(0, 0, 0, .12);
+  }
+</style>
+
+{% else %}
+<style>
+  :root {
+    --theme-page: #0f0f0f;
+    --theme-surface: #151515;
+    --theme-surface-2: #1b1b1b;
+    --theme-header: #080808;
+    --theme-header-text: #ffffff;
+    --theme-text: #f5f5f5;
+    --theme-muted: #bdbdbd;
+    --theme-border: #303030;
+    --theme-accent: #d4af37;
+    --theme-accent-strong: #b08d57;
+    --theme-on-accent: #111111;
+    --theme-shadow: rgba(0, 0, 0, .25);
+  }
+</style>
+{% endif %}
+
+<style>
+
+  /* =====================================================
+     CONTENEDOR GENERAL
+     ===================================================== */
+
+  .bloque {
+    background: #151515;
+    border: 1px solid #2a2a2a;
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: 0 12px 28px rgba(0,0,0,.25);
+  }
+
+
+  .titulo-seccion {
+    font-size: 34px;
+    font-weight: 900;
+    margin: 0 0 10px;
+    text-align: center;
+  }
+
+
+  .subtitulo {
+    text-align: center;
+    color: #bdbdbd;
+    margin: 0 0 24px;
+    font-size: 18px;
+  }
+
+
+  .linea {
+    width: 120px;
+    height: 3px;
+    background: {{ h.color_acento|default:'#d4af37' }};
+    margin: 0 auto 30px;
+    border-radius: 999px;
+  }
+
+
+  .contenido {
+    color: #d0d0d0;
+    font-size: 17px;
+    line-height: 1.7;
+  }
+
+
+  .contenido h3 {
+    color: #fff;
+    margin-top: 0;
+  }
+
+
+  .contenido p,
+  .institution-panel p {
+    text-align: justify;
+    text-justify: inter-word;
+    hyphens: auto;
+  }
+
+
+  .empty-state {
+    border: 1px dashed #444;
+    border-radius: 14px;
+    padding: 22px;
+    text-align: center !important;
+    color: #aaa;
+    background: #111;
+  }
+
+
+
+  /* =====================================================
+     TARJETAS / IMÁGENES
+     ===================================================== */
+
+.content-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, 250px) !important;
+    gap: 20px !important;
+    justify-content: start !important;
+    align-items: start !important;
+}
+
+.content-card {
+    width: 250px !important;
+    max-width: 250px !important;
+
+    background: #101010;
+    border: 1px solid #3a3a3a;
+    border-radius: 16px;
+    overflow: hidden;
+
+    box-shadow: 0 10px 26px rgba(0,0,0,.22);
+}
+
+.content-card-media {
+    position: relative;
+    display: flex;
+    width: 100% !important;
+    height: 360px !important;
+    min-height: 360px !important;
+    overflow: hidden;
+    background: #080808;
+    align-items: center;
+    justify-content: center;
+}
+
+.content-card-media img {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+    object-fit: contain !important;
+    object-position: center;
+} 
+
+.content-card-body {
+    padding: 14px 16px 16px;
+    background: #101010;
+}
+
+.content-card h3 {
+    margin: 0 0 10px;
+    color: #ffffff;
+    font-size: 17px;
+    line-height: 1.35;
+}
+
+.content-card p {
+    margin: 0;
+    color: #c5c5c5;
+    font-size: 14px;
+    line-height: 1.6;
+
+    text-align: justify;
+    text-justify: inter-word;
+    hyphens: auto;
+}
+
+.image-author {
+    display: block;
+
+    margin-top: 12px;
+    padding-top: 10px;
+
+    border-top: 1px solid #303030;
+
+    color: {{ h.color_acento|default:'#d4af37' }};
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.content-card:hover .content-card-media img {
+    transform: none;
+}
+  .image-credit-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 36px 12px 11px;
+    background: linear-gradient(
+      transparent,
+      rgba(0,0,0,.82)
+    );
+    color: #fff;
+    font-size: 12px;
+    font-style: italic;
+    line-height: 1.35;
+    text-shadow: 0 1px 4px rgba(0,0,0,.85);
+  }
+
+
+  .content-card-body {
+    padding: 16px 17px 18px;
+  }
+
+
+  .content-card h3 {
+    font-size: 19px;
+    margin: 0 0 9px;
+    line-height: 1.35;
+  }
+
+
+  .content-card p {
+    margin: 0;
+    color: #bbb;
+    text-align: justify;
+    text-justify: inter-word;
+    hyphens: auto;
+  }
+
+
+  .image-author {
+    display: block;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #292929;
+    color: {{ h.color_acento|default:'#d4af37' }};
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+
+
+  /* =====================================================
+     VIDEO / MÚSICA
+     ===================================================== */
+
+  .video-frame {
+    aspect-ratio: 16/9;
+    width: 100%;
+    border: 0;
+    display: block;
+    background: #050505;
+  }
+
+
+  .marcha-card {
+    padding: 18px;
+  }
+
+
+  .marcha-card audio {
+    width: 100%;
+    margin-top: 12px;
+  }
+
+
+  .external-link {
+    display: inline-block;
+    margin-top: 12px;
+    color: {{ h.color_acento|default:'#d4af37' }};
+    font-weight: 800;
+  }
+
+
+
+  /* =====================================================
+     MISIÓN Y VISIÓN
+     ===================================================== */
+
+  .institution-block {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+
+
+  .institution-panel {
+    background: #101010;
+    border: 1px solid #303030;
+    border-radius: 14px;
+    padding: 20px;
+  }
+
+
+  .institution-panel h3 {
+    color: {{ h.color_acento|default:'#d4af37' }};
+  }
+
+
+
+  /* =====================================================
+     TEMPLO
+     ===================================================== */
+
+  .templo-imagen-seccion {
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto 30px;
+    overflow: hidden;
+    border-radius: 14px;
+    background: #0d0d0d;
+    border: 1px solid {{ h.color_acento|default:'#d4af37' }};
+    box-shadow: 0 12px 30px rgba(0,0,0,.30);
+  }
+
+
+  .templo-imagen-seccion img {
+    width: 100%;
+    height: 430px;
+    display: block;
+    object-fit: cover;
+    object-position: center;
+  }
+
+
+  .templo-nombre-seccion {
+    color: #ffffff;
+    font-size: 20px;
+    font-weight: 800;
+    margin: 0 0 18px;
+  }
+
+
+  .templo-texto {
+    color: #d0d0d0;
+    font-size: 17px;
+    line-height: 1.7;
+  }
+
+
+  .templo-texto p {
+    margin-top: 0;
+    margin-bottom: 13px;
+    text-align: justify;
+    text-justify: inter-word;
+    hyphens: auto;
+  }
+
+
+
+  /* =====================================================
+     REGISTRO
+     ===================================================== */
+
+  .registro-shell {
+    max-width: 940px;
+    margin: auto;
+    color: #f4f4f4;
+  }
+
+
+  .registro-heading {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+
+  .registro-heading h3 {
+    font-size: 32px;
+    margin: 4px 0 6px;
+  }
+
+
+  .registro-heading p {
+    margin: 0;
+    color: #bbb;
+  }
+
+
+  .registro-kicker {
+    display: inline-block;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+  }
+
+
+  .registro-form {
+    background: #101010;
+    border: 1px solid #2b2b2b;
+    border-top: 4px solid var(--accent);
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.28);
+  }
+
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 20px;
+  }
+
+
+  .form-grid > label,
+  .date-grid label,
+  .measure-value {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-width: 0;
+  }
+
+
+  .form-grid label > span,
+  .date-grid label > span,
+  .measure-value span,
+  fieldset legend {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #cfcfcf;
+  }
+
+
+  .form-grid input:not([type="radio"]):not([type="checkbox"]),
+  .form-grid select {
+    width: 100%;
+    height: 44px;
+    box-sizing: border-box;
+    border-radius: 999px;
+    border: 1px solid #4a4a4a;
+    background: #191919;
+    color: #fff;
+    padding: 0 16px;
+    outline: none;
+    transition: .15s;
+  }
+
+
+  .form-grid select {
+    cursor: pointer;
+  }
+
+
+  .form-grid input:focus,
+  .form-grid select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(
+      in srgb,
+      var(--accent) 22%,
+      transparent
+    );
+  }
+
+
+  .form-grid select:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+  }
+
+  .full-row {
+    grid-column: 1/-1;
+  }
+
+
+  fieldset {
+    border: 1px solid #303030;
+    border-radius: 14px;
+    padding: 15px 16px;
+    margin: 0;
+  }
+
+
+  fieldset legend {
+    padding: 0 8px;
+  }
+
+
+  .date-grid {
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    gap: 12px;
+  }
+
+
+  .field-error {
+    color: #ffaaaa;
+    font-size: 12px;
+    margin-top: 3px;
+  }
+
+
+  .form-error-summary {
+    background: #3a1717;
+    border: 1px solid #8f3b3b;
+    color: #ffe2e2;
+    padding: 12px 14px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+
+
+  .privacy-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start;
+    gap: 10px !important;
+    background: #151515;
+    border: 1px solid #303030;
+    border-radius: 12px;
+    padding: 14px;
+  }
+
+
+  .privacy-row input {
+    margin-top: 5px;
+    accent-color: var(--accent);
+  }
+
+
+  .privacy-row span {
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    font-size: 13px !important;
+    line-height: 1.5;
+  }
+
+
+
+  /* =====================================================
+     MEDICIÓN
+     ===================================================== */
+
+  .measurement-card {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    align-items: center;
+    background: linear-gradient(
+      135deg,
+      var(--primary),
+      #171717
+    );
+    border: 1px solid color-mix(
+      in srgb,
+      var(--accent) 45%,
+      #333
+    );
+    border-radius: 16px;
+    padding: 20px;
+  }
+
+
+  .measurement-card h4 {
+    font-size: 22px;
+    margin: 4px 0;
+  }
+
+
+  .measurement-card p {
+    margin: 0;
+    color: #c5c5c5;
+    max-width: 570px;
+  }
+
+
+  .measure-actions {
+    min-width: 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+
+  button {
+    font: inherit;
+  }
+
+
+  .measure-button,
+  .btn-primary {
+    border: 0;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #111;
+    font-weight: 900;
+    padding: 12px 18px;
+    cursor: pointer;
+  }
+
+
+  .btn-secondary {
+    border: 1px solid #4a4a4a;
+    border-radius: 999px;
+    background: #181818;
+    color: #fff;
+    font-weight: 800;
+    padding: 11px 18px;
+    cursor: pointer;
+  }
+
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+
+  .measure-dialog {
+    width: min(780px,96vw);
+    padding: 0;
+    border: 1px solid #444;
+    border-radius: 20px;
+    background: #0d0d0d;
+    color: #fff;
+    overflow: hidden;
+  }
+
+
+  .measure-dialog::backdrop {
+    background: rgba(0,0,0,.78);
+    backdrop-filter: blur(4px);
+  }
+
+
+  .measure-header,
+  .measure-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    background: #151515;
+  }
+
+
+  .measure-header div {
+    display: flex;
+    flex-direction: column;
+  }
+
+
+  .measure-header small {
+    color: #bbb;
+  }
+
+
+  .measure-header button {
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 30px;
+    cursor: pointer;
+  }
+
+
+  .measure-calibration {
+    display: flex;
+    align-items: end;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #101010;
+    border-top: 1px solid #262626;
+    border-bottom: 1px solid #262626;
+  }
+
+
+  .measure-calibration label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1;
+  }
+
+
+  .measure-calibration label span {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #ccc;
+  }
+
+
+  .measure-calibration input {
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid #454545;
+    background: #1a1a1a;
+    color: #fff;
+    padding: 0 12px;
+    outline: none;
+  }
+
+
+  .measure-calibration input:focus {
+    border-color: var(--accent);
+  }
+
+
+  .measure-calibration small {
+    max-width: 320px;
+    color: #aaa;
+    line-height: 1.35;
+  }
+
+
+  .camera-stage {
+    position: relative;
+    background: #050505;
+    aspect-ratio: 3/4;
+    max-height: 62vh;
+    overflow: hidden;
+    touch-action: none;
+  }
+
+
+  .camera-stage video,
+  .camera-stage canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+
+  .camera-stage canvas {
+    z-index: 2;
+  }
+
+
+  .shoulder-guide {
+    position: absolute;
+    z-index: 1;
+    right: 12px;
+    top: 30%;
+    font-size: 11px;
+    letter-spacing: .16em;
+    color: rgba(255,255,255,.65);
+    border-top: 1px dashed rgba(255,255,255,.45);
+    width: 36%;
+    padding-top: 5px;
+    text-align: right;
+  }
+
+
+  .measure-result {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+
+  .measure-result strong {
+    font-size: 14px;
+  }
+
+
+  .measure-result small {
+    color: #aaa;
+  }
+
+
+  .measure-footer button {
+    border: 1px solid #555;
+    background: #222;
+    color: #fff;
+    border-radius: 999px;
+    padding: 9px 14px;
+    cursor: pointer;
+  }
+
+
+  .measure-footer button:last-child {
+    background: var(--accent);
+    color: #111;
+    border: 0;
+    font-weight: 900;
+  }
+
+
+  .measure-footer button:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+  }
+
+
+
+  /* =====================================================
+     RESPONSIVE
+     ===================================================== */
+
+    @media (max-width: 768px) {
+
+    .content-grid,
+    .form-grid,
+    .institution-block {
+      grid-template-columns: 1fr;
+    }
+
+    .content-card-media {
+      aspect-ratio: 4/3;
+    }
+
+    .date-grid {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .measurement-card {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .measure-actions {
+      min-width: 0;
+    }
+
+    .measure-calibration {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .measure-calibration small {
+      max-width: none;
+    }
+
+    .registro-form {
+      padding: 16px;
+    }
+
+    .bloque {
+      padding: 20px 14px;
+    }
+
+    .templo-imagen-seccion {
+      margin-bottom: 22px;
+      border-radius: 12px;
+    }
+
+    .templo-imagen-seccion img {
+      height: 260px;
+    }
+
+    .templo-nombre-seccion {
+      font-size: 18px;
+    }
+
+  }
+
+  /* =====================================================
+     APLICACIÓN DEL TEMA INSTITUCIONAL
+     ===================================================== */
+
+  html,
+  body {
+    background: var(--theme-page) !important;
+    color: var(--theme-text) !important;
+  }
+
+  header,
+  .site-header,
+  .header,
+  .brand-bar,
+  .org-header {
+    background: var(--theme-header) !important;
+    color: var(--theme-header-text) !important;
+    border-color: var(--theme-border) !important;
+  }
+
+  header a,
+  .site-header a,
+  .header a,
+  .brand-bar a,
+  .org-header a {
+    color: var(--theme-header-text) !important;
+  }
+
+  .topbar {
+    background: var(--theme-accent) !important;
+  }
+
+  footer,
+  .site-footer,
+  .footer {
+    background: var(--theme-header) !important;
+    color: var(--theme-header-text) !important;
+    border-color: var(--theme-border) !important;
+  }
+
+  /* Navegación de cada organización */
+  .org-navigation a,
+  .org-navigation button,
+  .org-nav a,
+  .org-nav button,
+  .hermandad-navigation a,
+  .hermandad-navigation button,
+  .hermandad-nav a,
+  .hermandad-nav button,
+  .organization-nav a,
+  .organization-nav button,
+  nav a,
+  nav button {
+    background: var(--theme-surface) !important;
+    color: var(--theme-text) !important;
+    border-color: var(--theme-border) !important;
+  }
+
+  .org-navigation a:hover,
+  .org-navigation button:hover,
+  .org-nav a:hover,
+  .org-nav button:hover,
+  .hermandad-navigation a:hover,
+  .hermandad-navigation button:hover,
+  .hermandad-nav a:hover,
+  .hermandad-nav button:hover,
+  .organization-nav a:hover,
+  .organization-nav button:hover,
+  nav a:hover,
+  nav button:hover {
+    border-color: var(--theme-accent) !important;
+    color: var(--theme-accent-strong) !important;
+  }
+
+  .dropdown-menu,
+  .dropdown-content,
+  .org-dropdown,
+  .org-menu-dropdown,
+  .org-menu-drawer,
+  #orgMenuDrawer {
+    background: var(--theme-surface) !important;
+    color: var(--theme-text) !important;
+    border-color: var(--theme-border) !important;
+  }
+
+  /* Contenedores y tarjetas */
+  .bloque,
+  .content-card,
+  .institution-panel,
+  .registro-form,
+  .measurement-card,
+  .templo-imagen-seccion,
+  .empty-state,
+  .marcha-card {
+    background: var(--theme-surface) !important;
+    color: var(--theme-text) !important;
+    border-color: var(--theme-border) !important;
+    box-shadow: 0 10px 28px var(--theme-shadow) !important;
+  }
+
+  .content-card-body {
+    background: var(--theme-surface) !important;
+    color: var(--theme-text) !important;
+  }
+
+  .content-card-media {
+    background: var(--theme-surface-2) !important;
+  }
+
+  /* Tipografía */
+  .titulo-seccion,
+  .contenido h3,
+  .templo-nombre-seccion,
+  .content-card h3,
+  .institution-panel h3,
+  .registro-heading h3,
+  .measurement-card h4 {
+    color: var(--theme-text) !important;
+  }
+
+  .subtitulo,
+  .contenido,
+  .contenido p,
+  .institution-panel p,
+  .content-card p,
+  .templo-texto,
+  .templo-texto p,
+  .registro-heading p,
+  .measurement-card p,
+  .empty-state {
+    color: var(--theme-muted) !important;
+  }
+
+  .linea {
+    background: var(--theme-accent) !important;
+  }
+
+  .image-author,
+  .external-link,
+  .registro-kicker,
+  .institution-panel h3 {
+    color: var(--theme-accent-strong) !important;
+  }
+
+  .image-author {
+    border-top-color: var(--theme-border) !important;
+  }
+
+  /* Templo */
+  .templo-imagen-seccion {
+    background: var(--theme-surface-2) !important;
+    border-color: var(--theme-accent) !important;
+  }
+
+  /* Formularios */
+  .registro-shell {
+    color: var(--theme-text) !important;
+  }
+
+  .form-grid label > span,
+  .date-grid label > span,
+  .measure-value span,
+  fieldset legend {
+    color: var(--theme-text) !important;
+  }
+
+  .form-grid input:not([type="radio"]):not([type="checkbox"]),
+  .form-grid select,
+  .measure-calibration input {
+    background: var(--theme-surface-2) !important;
+    color: var(--theme-text) !important;
+    border-color: var(--theme-border) !important;
+  }
+
+  .form-grid input::placeholder,
+  .measure-calibration input::placeholder {
+    color: var(--theme-muted) !important;
+    opacity: .78;
+  }
+
+  .form-grid input:focus,
+  .form-grid select:focus,
+  .measure-calibration input:focus {
+    border-color: var(--theme-accent) !important;
+    box-shadow: 0 0 0 3px color-mix(
+      in srgb,
+      var(--theme-accent) 22%,
+      transparent
+    ) !important;
+  }
+
+  fieldset,
+  .privacy-row {
+    background: var(--theme-surface) !important;
+    color: var(--theme-text) !important;
+    border-color: var(--theme-border) !important;
+  }
+
+  .privacy-row input {
+    accent-color: var(--theme-accent) !important;
+  }
+
+  .communication-consent {
+    color: var(--theme-text) !important;
+  }
+
+  .communication-consent small {
+    color: var(--theme-muted) !important;
+  }
+
+  /* Botones */
+  .measure-button,
+  .btn-primary {
+    background: var(--theme-accent) !important;
+    color: var(--theme-on-accent) !important;
+    border-color: var(--theme-accent) !important;
+  }
+
+  .measure-button:hover,
+  .btn-primary:hover {
+    background: var(--theme-accent-strong) !important;
+    border-color: var(--theme-accent-strong) !important;
+  }
+
+  .btn-secondary {
+    background: var(--theme-surface-2) !important;
+    color: var(--theme-text) !important;
+    border-color: var(--theme-border) !important;
+  }
+
+  /* Medición */
+  .measurement-card {
+    background: linear-gradient(
+      135deg,
+      var(--theme-surface-2),
+      var(--theme-surface)
+    ) !important;
+    border-color: var(--theme-accent) !important;
+  }
+
+  .measure-dialog {
+    background: var(--theme-surface) !important;
+    color: var(--theme-text) !important;
+    border-color: var(--theme-border) !important;
+  }
+
+  .measure-header,
+  .measure-footer,
+  .measure-calibration {
+    background: var(--theme-surface-2) !important;
+    color: var(--theme-text) !important;
+    border-color: var(--theme-border) !important;
+  }
+
+  .measure-header small,
+  .measure-calibration small,
+  .measure-result small {
+    color: var(--theme-muted) !important;
+  }
+
+  .measure-header button,
+  .measure-footer button {
+    color: var(--theme-text) !important;
+    border-color: var(--theme-border) !important;
+  }
+
+  .measure-footer button:last-child {
+    background: var(--theme-accent) !important;
+    color: var(--theme-on-accent) !important;
+  }
+
+  /* Cámara, vídeo y créditos: oscuros para conservar contraste. */
+  .camera-stage,
+  .video-frame {
+    background: #050505 !important;
+  }
+
+  .image-credit-overlay {
+    color: #ffffff !important;
+  }
+
+
+
+  /* =====================================================
+     NAVEGACIÓN INSTITUCIONAL
+     Incluye enlaces, botones y <summary> de los menús
+     desplegables para evitar que conserven el negro global.
+     ===================================================== */
+
+  nav a,
+  nav button,
+  nav summary,
+  nav details > summary,
+  .org-nav a,
+  .org-nav button,
+  .org-nav summary,
+  .org-navigation a,
+  .org-navigation button,
+  .org-navigation summary,
+  .hermandad-nav a,
+  .hermandad-nav button,
+  .hermandad-nav summary,
+  .hermandad-navigation a,
+  .hermandad-navigation button,
+  .hermandad-navigation summary,
+  .organization-nav a,
+  .organization-nav button,
+  .organization-nav summary,
+  .nav-link,
+  .nav-button,
+  .menu-button,
+  .dropdown-toggle {
+    background: var(--theme-surface) !important;
+    color: var(--theme-text) !important;
+    border: 1px solid var(--theme-border) !important;
+    box-shadow: none !important;
+  }
+
+  nav a:hover,
+  nav button:hover,
+  nav summary:hover,
+  nav details > summary:hover,
+  .org-nav a:hover,
+  .org-nav button:hover,
+  .org-nav summary:hover,
+  .org-navigation a:hover,
+  .org-navigation button:hover,
+  .org-navigation summary:hover,
+  .hermandad-nav a:hover,
+  .hermandad-nav button:hover,
+  .hermandad-nav summary:hover,
+  .hermandad-navigation a:hover,
+  .hermandad-navigation button:hover,
+  .hermandad-navigation summary:hover,
+  .organization-nav a:hover,
+  .organization-nav button:hover,
+  .organization-nav summary:hover,
+  .nav-link:hover,
+  .nav-button:hover,
+  .menu-button:hover,
+  .dropdown-toggle:hover {
+    background: var(--theme-surface-2) !important;
+    color: var(--theme-accent-strong) !important;
+    border-color: var(--theme-accent) !important;
+  }
+
+  nav details[open] > summary,
+  .org-nav details[open] > summary,
+  .org-navigation details[open] > summary,
+  .hermandad-nav details[open] > summary,
+  .hermandad-navigation details[open] > summary,
+  .organization-nav details[open] > summary {
+    background: var(--theme-accent) !important;
+    color: var(--theme-on-accent) !important;
+    border-color: var(--theme-accent) !important;
+  }
+
+  nav details > div,
+  nav details > ul,
+  nav details > menu,
+  .dropdown-menu,
+  .dropdown-content,
+  .org-dropdown,
+  .org-menu-dropdown,
+  .org-menu-drawer,
+  #orgMenuDrawer {
+    background: var(--theme-surface) !important;
+    color: var(--theme-text) !important;
+    border-color: var(--theme-border) !important;
+    box-shadow: 0 12px 28px var(--theme-shadow) !important;
+  }
+
+  nav details > div a,
+  nav details > ul a,
+  nav details > menu a,
+  .dropdown-menu a,
+  .dropdown-content a,
+  .org-dropdown a,
+  .org-menu-dropdown a,
+  #orgMenuDrawer a {
+    background: transparent !important;
+    color: var(--theme-text) !important;
+    border-color: transparent !important;
+  }
+
+  nav details > div a:hover,
+  nav details > ul a:hover,
+  nav details > menu a:hover,
+  .dropdown-menu a:hover,
+  .dropdown-content a:hover,
+  .org-dropdown a:hover,
+  .org-menu-dropdown a:hover,
+  #orgMenuDrawer a:hover {
+    background: var(--theme-surface-2) !important;
+    color: var(--theme-accent-strong) !important;
+  }
+
+</style>
+
 {% endblock %}
 
 {% block content %}
+
 {% include "web/_hermandad_navigation.html" %}
 
+
 <div class="bloque">
-  <h1 class="titulo-seccion">{{ titulo_seccion }}</h1>
-  <p class="subtitulo">{{ nombre_corto }}</p>
+
+  <h1 class="titulo-seccion">
+    {{ titulo_seccion }}
+  </h1>
+
+  <p class="subtitulo">
+    {{ nombre_corto }}
+  </p>
+
   <div class="linea"></div>
+
+
   <div class="contenido">
+
+
+    <!-- =================================================
+         MISIÓN Y VISIÓN
+         ================================================= -->
+
     {% if seccion == "mision-vision" %}
+
       <div class="institution-block">
-        <section class="institution-panel"><h3>Misión</h3>{% if h.mision %}{{ h.mision|linebreaks }}{% else %}<p class="empty-state">La misión se publicará desde el panel de administración.</p>{% endif %}</section>
-        <section class="institution-panel"><h3>Visión</h3>{% if h.vision %}{{ h.vision|linebreaks }}{% else %}<p class="empty-state">La visión se publicará desde el panel de administración.</p>{% endif %}</section>
+
+        <section class="institution-panel">
+
+          <h3>Misión</h3>
+
+          {% if h.mision %}
+            {{ h.mision|linebreaks }}
+          {% else %}
+            <p class="empty-state">
+              La misión se publicará desde el panel de administración.
+            </p>
+          {% endif %}
+
+        </section>
+
+
+        <section class="institution-panel">
+
+          <h3>Visión</h3>
+
+          {% if h.vision %}
+            {{ h.vision|linebreaks }}
+          {% else %}
+            <p class="empty-state">
+              La visión se publicará desde el panel de administración.
+            </p>
+          {% endif %}
+
+        </section>
+
       </div>
+
+
+
+    <!-- =================================================
+         NUESTRAS IMÁGENES / GALERÍA
+         ================================================= -->
 
     {% elif seccion == "nuestras-imagenes" or seccion == "galeria-fotos" %}
+
       {% if imagenes %}
+
         <div class="content-grid">
+
           {% for imagen in imagenes %}
+
             <article class="content-card">
-              <a class="content-card-media" href="{{ imagen.imagen.url }}" target="_blank" rel="noopener">
-                <img src="{% if imagen.miniatura %}{{ imagen.miniatura.url }}{% else %}{{ imagen.imagen.url }}{% endif %}" alt="{{ imagen.titulo }}">
-                {% if imagen.autor %}<span class="image-credit-overlay">{{ imagen.autor }}</span>{% endif %}
+
+              <a
+                class="content-card-media"
+                href="{{ imagen.imagen.url }}"
+                target="_blank"
+                rel="noopener"
+              >
+
+                <img
+                  src="{% if imagen.miniatura %}{{ imagen.miniatura.url }}{% else %}{{ imagen.imagen.url }}{% endif %}"
+                  alt="{{ imagen.titulo }}"
+                  loading="lazy"
+                >
+
+                {% if imagen.autor %}
+                  <span class="image-credit-overlay">
+                    {{ imagen.autor }}
+                  </span>
+                {% endif %}
+
               </a>
+
+
               <div class="content-card-body">
-                <h3>{{ imagen.titulo }}</h3>
-                {% if imagen.descripcion %}<p>{{ imagen.descripcion|linebreaksbr }}</p>{% endif %}
-                {% if imagen.autor %}<span class="image-author">Autor / Fotografía: {{ imagen.autor }}</span>{% endif %}
+
+                <h3>
+                  {{ imagen.titulo }}
+                </h3>
+
+                {% if imagen.descripcion %}
+                  <p>
+                    {{ imagen.descripcion|linebreaksbr }}
+                  </p>
+                {% endif %}
+
+                {% if imagen.autor %}
+                  <span class="image-author">
+                    Autor / Fotografía: {{ imagen.autor }}
+                  </span>
+                {% endif %}
+
               </div>
+
             </article>
+
           {% endfor %}
+
         </div>
-      {% else %}<p class="empty-state">Todavía no hay imágenes publicadas en esta sección.</p>{% endif %}
 
-    {% elif seccion == "templo" %}
-      <h3>{{ h.templo|default:"Templo" }}</h3>
-      {% if h.informacion_templo %}{{ h.informacion_templo|linebreaks }}{% else %}<p class="empty-state">La historia e información del templo se publicará desde el panel de administración.</p>{% endif %}
+      {% else %}
 
-    {% elif seccion == "agenda" %}
-      {% include "web/_agenda.html" %}
+        <p class="empty-state">
+          Todavía no hay imágenes publicadas en esta sección.
+        </p>
 
-    {% elif seccion == "galeria-filmica" %}
-      {% if videos %}
-        <div class="content-grid">
-          {% for video in videos %}
-            <article class="content-card">
-              {% if video.embed_url %}<iframe class="video-frame" src="{{ video.embed_url }}" title="{{ video.titulo }}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>{% endif %}
-              <div class="content-card-body"><h3>{{ video.titulo }}</h3>{% if video.descripcion %}<p>{{ video.descripcion }}</p>{% endif %}<a class="external-link" href="{{ video.url }}" target="_blank" rel="noopener noreferrer">Abrir video ↗</a></div>
-            </article>
-          {% endfor %}
-        </div>
-      {% else %}<p class="empty-state">Todavía no hay videos publicados.</p>{% endif %}
-
-    {% elif seccion == "marchas" %}
-      {% if marchas %}
-        <div class="content-grid">
-          {% for marcha in marchas %}
-            <article class="content-card marcha-card"><h3>{{ marcha.titulo }}</h3>{% if marcha.compositor %}<p><strong>Compositor:</strong> {{ marcha.compositor }}</p>{% endif %}{% if marcha.descripcion %}<p>{{ marcha.descripcion }}</p>{% endif %}{% if marcha.audio %}<audio controls preload="metadata"><source src="{{ marcha.audio.url }}">Tu navegador no puede reproducir este audio.</audio>{% endif %}{% if marcha.enlace %}<a class="external-link" href="{{ marcha.enlace }}" target="_blank" rel="noopener noreferrer">Escuchar en enlace externo ↗</a>{% endif %}</article>
-          {% endfor %}
-        </div>
-      {% else %}<p class="empty-state">Todavía no hay contenido publicado en {{ h.etiqueta_musica|lower }}.</p>{% endif %}
-
-    {% elif seccion == "registro-actualizacion-datos" %}
-      <div class="registro-shell" style="--accent:{{ h.color_acento|default:'#d4af37' }};--primary:{{ h.color_primario|default:'#111111' }};">
-        <div class="registro-heading">
-          {% if h.es_hermandad %}
-            <p>Completa tus datos y registra la referencia visual hasta el hombro.</p>
-          {% else %}
-            <p>Completa tus datos para registrarte como devoto y crear tu acceso personal.</p>
-          {% endif %}
-        </div>
-        <form class="registro-form" id="registroForm" method="post" novalidate>
-          {% csrf_token %}{{ form.website }}{% if h.es_hermandad %}{{ form.medida_hombro_cm }}{% endif %}
-          {% if form.non_field_errors %}<div class="form-error-summary">{{ form.non_field_errors }}</div>{% endif %}
-          <div class="form-grid">
-            <label><span>DPI</span>{{ form.dpi }}{% for error in form.dpi.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-            <label><span>Primer nombre</span>{{ form.primer_nombre }}{% for error in form.primer_nombre.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-            <label><span>Otros nombres</span>{{ form.otros_nombres }}{% for error in form.otros_nombres.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-            <label><span>Primer apellido</span>{{ form.primer_apellido }}{% for error in form.primer_apellido.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-            <label><span>Otros apellidos</span>{{ form.otros_apellidos }}{% for error in form.otros_apellidos.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-
-
-            <fieldset class="full-row"><legend>Fecha de nacimiento</legend><div class="date-grid">
-              <label><span>Día</span>{{ form.dia }}{% for error in form.dia.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-              <label><span>Mes</span>{{ form.mes }}{% for error in form.mes.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-              <label><span>Año</span>{{ form.anio }}{% for error in form.anio.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-            </div></fieldset>
-
-            <label><span>Departamento</span>{{ form.departamento }}{% for error in form.departamento.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-            <label><span>Municipio</span>{{ form.municipio }}{% for error in form.municipio.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-            <label><span>Celular</span>{{ form.celular }}{% for error in form.celular.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-            <label><span>Correo</span>{{ form.correo }}{% for error in form.correo.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-            <label><span>Verifique correo</span>{{ form.correo2 }}{% for error in form.correo2.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-            <label><span>Contraseña</span>{{ form.password1 }}{% for error in form.password1.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-            <label><span>Confirmar contraseña</span>{{ form.password2 }}{% for error in form.password2.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-
-            {% if h.es_hermandad %}
-              <section class="measurement-card full-row"><div><span class="registro-kicker">Medición visual</span><h4>Altura hasta el hombro</h4><p>Abre la cámara e indica la altura total de la persona para calibrar la imagen. Luego marca suelo, cabeza y hombro. El sistema guardará el resultado en centímetros y lo mostrará también en metros, por ejemplo: 1.48 m (148.0 cm).</p></div><div class="measure-actions"><button class="measure-button" type="button" id="openMeasure">Abrir cámara</button><label class="measure-value"><span>Medida registrada</span><input id="medidaHombroVisual" placeholder="Pendiente" readonly></label>{% for error in form.medida_hombro_cm.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</div></section>
-            {% endif %}
-
-            <label class="privacy-row full-row">{{ form.acepta_privacidad }}<span>{{ form.acepta_privacidad.label }}</span>{% for error in form.acepta_privacidad.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-            <div class="full-row communication-consent">
-              <strong>Canales de comunicación autorizados</strong>
-              <small>Puedes elegir uno, varios o ninguno. La organización utilizará únicamente los canales que autorices.</small>
-            </div>
-            <label class="privacy-row full-row">{{ form.acepta_email }}<span>{{ form.acepta_email.label }}</span>{% for error in form.acepta_email.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-            <label class="privacy-row full-row">{{ form.acepta_sms }}<span>{{ form.acepta_sms.label }}</span>{% for error in form.acepta_sms.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-            <label class="privacy-row full-row">{{ form.acepta_whatsapp }}<span>{{ form.acepta_whatsapp.label }}</span>{% for error in form.acepta_whatsapp.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</label>
-          </div>
-          <div class="form-actions"><button type="reset" class="btn-secondary">Borrar</button><button type="submit" class="btn-primary">Guardar registro</button></div>
-        </form>
-      </div>
-
-      {% if h.es_hermandad %}
-      <dialog id="measureDialog" class="measure-dialog"><div class="measure-header"><div><strong>Medir hasta el hombro</strong><small id="measureHelp">Ingresa la altura total de la persona y toca el suelo.</small></div><button type="button" id="closeMeasure" aria-label="Cerrar">×</button></div><div class="measure-calibration"><label><span>Altura total de la persona (cm)</span><input type="number" id="alturaRealCm" min="80" max="230" step="0.1" inputmode="decimal" placeholder="Ej. 170"></label><small>Esta altura se usa como referencia para convertir la distancia de la imagen a centímetros.</small></div><div class="camera-stage" id="cameraStage"><video id="measureVideo" playsinline autoplay muted></video><canvas id="measureCanvas"></canvas><div class="shoulder-guide">HOMBRO</div></div><div class="measure-footer"><div class="measure-result"><strong id="measureDistance">Sin medición</strong><small id="measurePixels">Calibración pendiente</small></div><button type="button" id="resetMeasure">Reiniciar</button><button type="button" id="saveMeasure" disabled>Usar medida</button></div></dialog>
       {% endif %}
 
-    {% else %}<p class="empty-state">Esta sección todavía no está disponible.</p>{% endif %}
+
+
+    <!-- =================================================
+         TEMPLO
+         ================================================= -->
+
+    {% elif seccion == "templo" %}
+
+
+      {% if h.imagen_templo %}
+
+        <div class="templo-imagen-seccion">
+
+          <img
+            src="{{ h.imagen_templo.url }}"
+            alt="{% if h.templo %}{{ h.templo }}{% else %}Templo de {{ h.nombre }}{% endif %}"
+            loading="lazy"
+          >
+
+        </div>
+
+      {% endif %}
+
+
+      <h3 class="templo-nombre-seccion">
+        {{ h.templo|default:"Templo" }}
+      </h3>
+
+
+      {% if h.informacion_templo %}
+
+        <div class="templo-texto">
+          {{ h.informacion_templo|linebreaks }}
+        </div>
+
+      {% else %}
+
+        <p class="empty-state">
+          La historia e información del templo se publicará desde el panel de administración.
+        </p>
+
+      {% endif %}
+
+
+
+    <!-- =================================================
+         AGENDA
+         ================================================= -->
+
+    {% elif seccion == "agenda" %}
+
+      {% include "web/_agenda.html" %}
+
+
+
+    <!-- =================================================
+         GALERÍA FÍLMICA
+         ================================================= -->
+
+    {% elif seccion == "galeria-filmica" %}
+
+      {% if videos %}
+
+        <div class="content-grid">
+
+          {% for video in videos %}
+
+            <article class="content-card">
+
+              {% if video.video %}
+
+                <video
+                  class="video-frame"
+                  controls
+                  preload="metadata"
+                >
+                  <source src="{{ video.video.url }}">
+                  Tu navegador no puede reproducir este video.
+                </video>
+
+              {% elif video.embed_url %}
+
+                <iframe
+                  class="video-frame"
+                  src="{{ video.embed_url }}"
+                  title="{{ video.titulo }}"
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen
+                ></iframe>
+
+              {% endif %}
+
+
+              <div class="content-card-body">
+
+                <h3>
+                  {{ video.titulo }}
+                </h3>
+
+                {% if video.descripcion %}
+                  <p>
+                    {{ video.descripcion }}
+                  </p>
+                {% endif %}
+
+                {% if video.url %}
+                  <a
+                    class="external-link"
+                    href="{{ video.url }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Abrir video externo ↗
+                  </a>
+                {% endif %}
+
+              </div>
+
+            </article>
+
+          {% endfor %}
+
+        </div>
+
+      {% else %}
+
+        <p class="empty-state">
+          Todavía no hay videos publicados.
+        </p>
+
+      {% endif %}
+
+
+
+    <!-- =================================================
+         MARCHAS / REPERTORIO
+         ================================================= -->
+
+    {% elif seccion == "marchas" %}
+
+      {% if marchas %}
+
+        <div class="content-grid">
+
+          {% for marcha in marchas %}
+
+            <article class="content-card marcha-card">
+
+              <h3>
+                {{ marcha.titulo }}
+              </h3>
+
+
+              {% if marcha.compositor %}
+                <p>
+                  <strong>Compositor:</strong>
+                  {{ marcha.compositor }}
+                </p>
+              {% endif %}
+
+
+              {% if marcha.descripcion %}
+                <p>
+                  {{ marcha.descripcion }}
+                </p>
+              {% endif %}
+
+
+              {% if marcha.audio %}
+
+                <audio controls preload="metadata">
+
+                  <source src="{{ marcha.audio.url }}">
+
+                  Tu navegador no puede reproducir este audio.
+
+                </audio>
+
+              {% endif %}
+
+
+              {% if marcha.enlace %}
+
+                <a
+                  class="external-link"
+                  href="{{ marcha.enlace }}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Escuchar en enlace externo ↗
+                </a>
+
+              {% endif %}
+
+            </article>
+
+          {% endfor %}
+
+        </div>
+
+      {% else %}
+
+        <p class="empty-state">
+          Todavía no hay contenido publicado en
+          {{ h.etiqueta_musica|lower }}.
+        </p>
+
+      {% endif %}
+
+
+
+    <!-- =================================================
+         REGISTRO / ACTUALIZACIÓN
+         ================================================= -->
+
+    {% elif seccion == "registro-actualizacion-datos" %}
+
+
+      <div
+        class="registro-shell"
+        style="
+          --accent:var(--theme-accent);
+          --primary:var(--theme-surface-2);
+        "
+      >
+
+
+        <div class="registro-heading">
+
+          {% if h.es_hermandad %}
+
+            <p>
+              Completa tus datos y registra la referencia visual hasta el hombro.
+            </p>
+
+          {% else %}
+
+            <p>
+              Completa tus datos para registrarte como devoto y crear tu acceso personal.
+            </p>
+
+          {% endif %}
+
+        </div>
+
+
+        <form
+          class="registro-form"
+          id="registroForm"
+          method="post"
+          novalidate
+        >
+
+          {% csrf_token %}
+
+          {{ form.website }}
+
+          {% if h.es_hermandad %}
+            {{ form.medida_hombro_cm }}
+          {% endif %}
+
+
+          {% if form.non_field_errors %}
+
+            <div class="form-error-summary">
+              {{ form.non_field_errors }}
+            </div>
+
+          {% endif %}
+
+
+          <div class="form-grid">
+
+
+            <label>
+
+              <span>DPI</span>
+
+              {{ form.dpi }}
+
+              {% for error in form.dpi.errors %}
+                <small class="field-error">
+                  {{ error }}
+                </small>
+              {% endfor %}
+
+            </label>
+
+
+            <label>
+
+              <span>Primer nombre</span>
+
+              {{ form.primer_nombre }}
+
+              {% for error in form.primer_nombre.errors %}
+                <small class="field-error">
+                  {{ error }}
+                </small>
+              {% endfor %}
+
+            </label>
+
+
+            <label>
+
+              <span>Otros nombres</span>
+
+              {{ form.otros_nombres }}
+
+              {% for error in form.otros_nombres.errors %}
+                <small class="field-error">
+                  {{ error }}
+                </small>
+              {% endfor %}
+
+            </label>
+
+
+            <label>
+
+              <span>Primer apellido</span>
+
+              {{ form.primer_apellido }}
+
+              {% for error in form.primer_apellido.errors %}
+                <small class="field-error">
+                  {{ error }}
+                </small>
+              {% endfor %}
+
+            </label>
+
+
+            <label>
+
+              <span>Otros apellidos</span>
+
+              {{ form.otros_apellidos }}
+
+              {% for error in form.otros_apellidos.errors %}
+                <small class="field-error">
+                  {{ error }}
+                </small>
+              {% endfor %}
+
+            </label>
+
+
+
+            <fieldset class="full-row">
+
+              <legend>
+                Fecha de nacimiento
+              </legend>
+
+
+              <div class="date-grid">
+
+
+                <label>
+
+                  <span>Día</span>
+
+                  {{ form.dia }}
+
+                  {% for error in form.dia.errors %}
+                    <small class="field-error">
+                      {{ error }}
+                    </small>
+                  {% endfor %}
+
+                </label>
+
+
+                <label>
+
+                  <span>Mes</span>
+
+                  {{ form.mes }}
+
+                  {% for error in form.mes.errors %}
+                    <small class="field-error">
+                      {{ error }}
+                    </small>
+                  {% endfor %}
+
+                </label>
+
+
+                <label>
+
+                  <span>Año</span>
+
+                  {{ form.anio }}
+
+                  {% for error in form.anio.errors %}
+                    <small class="field-error">
+                      {{ error }}
+                    </small>
+                  {% endfor %}
+
+                </label>
+
+
+              </div>
+
+            </fieldset>
+
+
+            <!-- =====================================================
+                 DEPARTAMENTO Y MUNICIPIO
+                 ===================================================== -->
+
+            <label>
+              <span>Departamento</span>
+
+              {{ form.departamento }}
+
+              {% for error in form.departamento.errors %}
+                <small class="field-error">
+                  {{ error }}
+                </small>
+              {% endfor %}
+            </label>
+
+
+            <label>
+              <span>Municipio</span>
+
+              {{ form.municipio }}
+
+              {% for error in form.municipio.errors %}
+                <small class="field-error">
+                  {{ error }}
+                </small>
+              {% endfor %}
+            </label>
+
+
+<label>
+
+              <span>Celular</span>
+
+              {{ form.celular }}
+
+              {% for error in form.celular.errors %}
+                <small class="field-error">
+                  {{ error }}
+                </small>
+              {% endfor %}
+
+            </label>
+
+
+            <label>
+
+              <span>Correo</span>
+
+              {{ form.correo }}
+
+              {% for error in form.correo.errors %}
+                <small class="field-error">
+                  {{ error }}
+                </small>
+              {% endfor %}
+
+            </label>
+
+
+            <label>
+
+              <span>Verifique correo</span>
+
+              {{ form.correo2 }}
+
+              {% for error in form.correo2.errors %}
+                <small class="field-error">
+                  {{ error }}
+                </small>
+              {% endfor %}
+
+            </label>
+
+
+            <label>
+
+              <span>Contraseña</span>
+
+              {{ form.password1 }}
+
+              {% for error in form.password1.errors %}
+                <small class="field-error">
+                  {{ error }}
+                </small>
+              {% endfor %}
+
+            </label>
+
+
+            <label>
+
+              <span>Confirmar contraseña</span>
+
+              {{ form.password2 }}
+
+              {% for error in form.password2.errors %}
+                <small class="field-error">
+                  {{ error }}
+                </small>
+              {% endfor %}
+
+            </label>
+
+
+
+            {% if h.es_hermandad %}
+
+              <section class="measurement-card full-row">
+
+                <div>
+
+                  <span class="registro-kicker">
+                    Medición visual
+                  </span>
+
+                  <h4>
+                    Altura hasta el hombro
+                  </h4>
+
+                  <p>
+                    Abre la cámara e indica la altura total de la persona
+                    para calibrar la imagen. Luego marca suelo, cabeza y
+                    hombro. El sistema guardará el resultado en centímetros
+                    y lo mostrará también en metros, por ejemplo:
+                    1.48 m (148.0 cm).
+                  </p>
+
+                </div>
+
+
+                <div class="measure-actions">
+
+                  <button
+                    class="measure-button"
+                    type="button"
+                    id="openMeasure"
+                  >
+                    Abrir cámara
+                  </button>
+
+
+                  <label class="measure-value">
+
+                    <span>
+                      Medida registrada
+                    </span>
+
+                    <input
+                      id="medidaHombroVisual"
+                      placeholder="Pendiente"
+                      readonly
+                    >
+
+                  </label>
+
+
+                  {% for error in form.medida_hombro_cm.errors %}
+
+                    <small class="field-error">
+                      {{ error }}
+                    </small>
+
+                  {% endfor %}
+
+                </div>
+
+              </section>
+
+            {% endif %}
+
+
+
+            <label class="privacy-row full-row">
+
+              {{ form.acepta_privacidad }}
+
+              <span>
+                {{ form.acepta_privacidad.label }}
+              </span>
+
+              {% for error in form.acepta_privacidad.errors %}
+
+                <small class="field-error">
+                  {{ error }}
+                </small>
+
+              {% endfor %}
+
+            </label>
+
+
+
+            <div class="full-row communication-consent">
+
+              <strong>
+                Canales de comunicación autorizados
+              </strong>
+
+              <small>
+                Puedes elegir uno, varios o ninguno.
+                La organización utilizará únicamente
+                los canales que autorices.
+              </small>
+
+            </div>
+
+
+
+            <label class="privacy-row full-row">
+
+              {{ form.acepta_email }}
+
+              <span>
+                {{ form.acepta_email.label }}
+              </span>
+
+              {% for error in form.acepta_email.errors %}
+                <small class="field-error">
+                  {{ error }}
+                </small>
+              {% endfor %}
+
+            </label>
+
+
+
+            <label class="privacy-row full-row">
+
+              {{ form.acepta_sms }}
+
+              <span>
+                {{ form.acepta_sms.label }}
+              </span>
+
+              {% for error in form.acepta_sms.errors %}
+                <small class="field-error">
+                  {{ error }}
+                </small>
+              {% endfor %}
+
+            </label>
+
+
+
+            <label class="privacy-row full-row">
+
+              {{ form.acepta_whatsapp }}
+
+              <span>
+                {{ form.acepta_whatsapp.label }}
+              </span>
+
+              {% for error in form.acepta_whatsapp.errors %}
+                <small class="field-error">
+                  {{ error }}
+                </small>
+              {% endfor %}
+
+            </label>
+
+
+          </div>
+
+
+          <div class="form-actions">
+
+            <button
+              type="reset"
+              class="btn-secondary"
+            >
+              Borrar
+            </button>
+
+
+            <button
+              type="submit"
+              class="btn-primary"
+            >
+              Guardar registro
+            </button>
+
+          </div>
+
+
+        </form>
+
+      </div>
+
+
+
+      {% if h.es_hermandad %}
+
+        <dialog
+          id="measureDialog"
+          class="measure-dialog"
+        >
+
+
+          <div class="measure-header">
+
+            <div>
+
+              <strong>
+                Medir hasta el hombro
+              </strong>
+
+              <small id="measureHelp">
+                Ingresa la altura total de la persona y toca el suelo.
+              </small>
+
+            </div>
+
+
+            <button
+              type="button"
+              id="closeMeasure"
+              aria-label="Cerrar"
+            >
+              ×
+            </button>
+
+          </div>
+
+
+
+          <div class="measure-calibration">
+
+            <label>
+
+              <span>
+                Altura total de la persona (cm)
+              </span>
+
+              <input
+                type="number"
+                id="alturaRealCm"
+                min="80"
+                max="230"
+                step="0.1"
+                inputmode="decimal"
+                placeholder="Ej. 170"
+              >
+
+            </label>
+
+
+            <small>
+              Esta altura se usa como referencia para convertir
+              la distancia de la imagen a centímetros.
+            </small>
+
+          </div>
+
+
+
+          <div
+            class="camera-stage"
+            id="cameraStage"
+          >
+
+            <video
+              id="measureVideo"
+              playsinline
+              autoplay
+              muted
+            ></video>
+
+            <canvas
+              id="measureCanvas"
+            ></canvas>
+
+            <div class="shoulder-guide">
+              HOMBRO
+            </div>
+
+          </div>
+
+
+
+          <div class="measure-footer">
+
+            <div class="measure-result">
+
+              <strong id="measureDistance">
+                Sin medición
+              </strong>
+
+              <small id="measurePixels">
+                Calibración pendiente
+              </small>
+
+            </div>
+
+
+            <button
+              type="button"
+              id="resetMeasure"
+            >
+              Reiniciar
+            </button>
+
+
+            <button
+              type="button"
+              id="saveMeasure"
+              disabled
+            >
+              Usar medida
+            </button>
+
+          </div>
+
+
+        </dialog>
+
+      {% endif %}
+
+
+
+    {% else %}
+
+      <p class="empty-state">
+        Esta sección todavía no está disponible.
+      </p>
+
+    {% endif %}
+
+
   </div>
+
 </div>
 
+
+
+<!-- =====================================================
+     DEPARTAMENTO / MUNICIPIO DEPENDIENTES
+     ===================================================== -->
 <script>
 (() => {
-  const dialog=document.getElementById('measureDialog'); if(!dialog)return;
-  const video=document.getElementById('measureVideo');
-  const canvas=document.getElementById('measureCanvas');
-  const stage=document.getElementById('cameraStage');
-  const help=document.getElementById('measureHelp');
-  const resultLabel=document.getElementById('measureDistance');
-  const pixelLabel=document.getElementById('measurePixels');
-  const heightInput=document.getElementById('alturaRealCm');
-  const saveButton=document.getElementById('saveMeasure');
-  const output=document.getElementById('medidaHombroVisual');
-  const hidden=document.getElementById('id_medida_hombro_cm');
-  let stream=null,points=[],measureCm=null;
+  const departamentoSelect = document.getElementById("id_departamento");
+  const municipioSelect = document.getElementById("id_municipio");
 
-  const accent=()=>getComputedStyle(document.querySelector('.registro-shell')).getPropertyValue('--accent').trim()||'#d4af37';
-  function sizeCanvas(){const r=stage.getBoundingClientRect();const d=window.devicePixelRatio||1;canvas.width=Math.round(r.width*d);canvas.height=Math.round(r.height*d);canvas.style.width=r.width+'px';canvas.style.height=r.height+'px';draw()}
-  function draw(){
-    const ctx=canvas.getContext('2d'),d=window.devicePixelRatio||1;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    if(!points.length)return;
-    const color=accent();
-    ctx.lineWidth=3*d;ctx.strokeStyle=color;ctx.fillStyle=color;
-    if(points.length>=2){ctx.save();ctx.setLineDash([8*d,6*d]);ctx.strokeStyle='rgba(255,255,255,.72)';ctx.beginPath();ctx.moveTo(points[0].x*d,points[0].y*d);ctx.lineTo(points[1].x*d,points[1].y*d);ctx.stroke();ctx.restore()}
-    if(points.length>=3){ctx.strokeStyle=color;ctx.beginPath();ctx.moveTo(points[0].x*d,points[0].y*d);ctx.lineTo(points[2].x*d,points[2].y*d);ctx.stroke()}
-    const labels=['S','C','H'];
-    points.forEach((p,i)=>{ctx.fillStyle=color;ctx.beginPath();ctx.arc(p.x*d,p.y*d,9*d,0,Math.PI*2);ctx.fill();ctx.fillStyle='#111';ctx.font=`bold ${10*d}px Arial`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(labels[i],p.x*d,p.y*d)});
+  if (!departamentoSelect || !municipioSelect) {
+    return;
   }
-  function calculate(){
-    saveButton.disabled=true;measureCm=null;
-    if(points.length<3){resultLabel.textContent='Sin medición';return}
-    const realHeight=parseFloat(heightInput.value);
-    if(!Number.isFinite(realHeight)||realHeight<80||realHeight>230){resultLabel.textContent='Ingresa una altura válida';pixelLabel.textContent='Usa un valor entre 80 y 230 cm';return}
-    const fullPx=Math.hypot(points[1].x-points[0].x,points[1].y-points[0].y);
-    const shoulderPx=Math.hypot(points[2].x-points[0].x,points[2].y-points[0].y);
-    if(fullPx<20||shoulderPx<10){resultLabel.textContent='Repite los puntos';pixelLabel.textContent='La referencia quedó demasiado corta';return}
-    measureCm=Math.max(40,Math.min(220,(shoulderPx/fullPx)*realHeight));
-    resultLabel.textContent=`${(measureCm/100).toFixed(2)} m (${measureCm.toFixed(1)} cm)`;
-    pixelLabel.textContent=`Calibrado con altura total de ${realHeight.toFixed(1)} cm`;
-    help.textContent='Medición calculada. Puedes guardarla o reiniciar los puntos.';
-    saveButton.disabled=false;
+
+  let municipiosPorDepartamento = {};
+
+  try {
+    municipiosPorDepartamento = JSON.parse(
+      departamentoSelect.dataset.municipios || "{}"
+    );
+  } catch (error) {
+    console.error(
+      "No fue posible cargar los municipios de Guatemala.",
+      error
+    );
+    return;
   }
-  function reset(){points=[];measureCm=null;saveButton.disabled=true;resultLabel.textContent='Sin medición';pixelLabel.textContent='Calibración pendiente';help.textContent='Ingresa la altura total de la persona y toca el suelo.';draw()}
-  async function open(){dialog.showModal();sizeCanvas();reset();try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});video.srcObject=stream}catch(e){help.textContent='No se pudo abrir la cámara. Revisa el permiso del navegador y usa HTTPS o localhost.'}}
-  function close(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}dialog.close()}
-  stage.addEventListener('pointerup',e=>{
-    if(points.length>=3)return;
-    const r=stage.getBoundingClientRect();points.push({x:e.clientX-r.left,y:e.clientY-r.top});
-    if(points.length===1)help.textContent='Ahora toca la parte superior de la cabeza.';
-    if(points.length===2)help.textContent='Ahora toca exactamente el hombro.';
-    if(points.length===3)calculate();
-    draw();
+
+  const municipioInicial = municipioSelect.value;
+
+  function cargarMunicipios(valorConservar = "") {
+    const departamento = departamentoSelect.value;
+    const municipios = municipiosPorDepartamento[departamento] || [];
+
+    municipioSelect.innerHTML = "";
+
+    const opcionInicial = document.createElement("option");
+    opcionInicial.value = "";
+
+    if (!departamento) {
+      opcionInicial.textContent = "Seleccione primero un departamento";
+      municipioSelect.appendChild(opcionInicial);
+      municipioSelect.disabled = true;
+      return;
+    }
+
+    opcionInicial.textContent = "Seleccione un municipio";
+    municipioSelect.appendChild(opcionInicial);
+
+    municipios.forEach((nombreMunicipio) => {
+      const opcion = document.createElement("option");
+      opcion.value = nombreMunicipio;
+      opcion.textContent = nombreMunicipio;
+
+      if (nombreMunicipio === valorConservar) {
+        opcion.selected = true;
+      }
+
+      municipioSelect.appendChild(opcion);
+    });
+
+    municipioSelect.disabled = false;
+  }
+
+  cargarMunicipios(municipioInicial);
+
+  departamentoSelect.addEventListener("change", () => {
+    cargarMunicipios("");
   });
-  heightInput.addEventListener('input',()=>{if(points.length===3)calculate()});
-  document.getElementById('openMeasure').addEventListener('click',open);
-  document.getElementById('closeMeasure').addEventListener('click',close);
-  document.getElementById('resetMeasure').addEventListener('click',reset);
-  saveButton.addEventListener('click',()=>{if(measureCm!==null){hidden.value=measureCm.toFixed(1);output.value=`${(measureCm/100).toFixed(2)} m (${measureCm.toFixed(1)} cm)`;close()}});
-  dialog.addEventListener('cancel',e=>{e.preventDefault();close()});
-  window.addEventListener('resize',()=>dialog.open&&sizeCanvas());
-  const form=document.getElementById('registroForm');
-  form.addEventListener('submit',e=>{const a=document.getElementById('id_correo'),b=document.getElementById('id_correo2');if(a.value.trim().toLowerCase()!==b.value.trim().toLowerCase()){e.preventDefault();b.setCustomValidity('Los correos no coinciden');b.reportValidity()}else b.setCustomValidity('')});
-  form.addEventListener('reset',()=>{hidden.value='';output.value='';heightInput.value='';reset()});
-  if(hidden.value){const cm=parseFloat(hidden.value);if(Number.isFinite(cm))output.value=`${(cm/100).toFixed(2)} m (${cm.toFixed(1)} cm)`}
 })();
 </script>
-{% endblock %}
+
+
+
+<script>
+
+(() => {
+
+  const dialog = document.getElementById("measureDialog");
+
+  if (!dialog) {
+    return;
+  }
+
+
+  const video = document.getElementById("measureVideo");
+  const canvas = document.getElementById("measureCanvas");
+  const stage = document.getElementById("cameraStage");
+  const help = document.getElementById("measureHelp");
+  const resultLabel = document.getElementById("measureDistance");
+  const pixelLabel = document.getElementById("measurePixels");
+  const heightInput = document.getElementById("alturaRealCm");
+  const saveButton = document.getElementById("saveMeasure");
+  const output = document.getElementById("medidaHombroVisual");
+  const hidden = document.getElementById("id_medida_hombro_cm");
+
+  let stream = null;
+  let points = [];
+  let measureCm = null;
+
+
+  const accent = () => {
+
+    const shell = document.querySelector(".registro-shell");
+
+    if (!shell) {
+      return "#d4af37";
+    }
+
+    return (
+      getComputedStyle(shell)
+        .getPropertyValue("--accent")
+        .trim() || "#d4af37"
+    );
+  };
+
+
+  function sizeCanvas() {
+
+    const r = stage.getBoundingClientRect();
+    const d = window.devicePixelRatio || 1;
+
+    canvas.width = Math.round(r.width * d);
+    canvas.height = Math.round(r.height * d);
+
+    canvas.style.width = r.width + "px";
+    canvas.style.height = r.height + "px";
+
+    draw();
+  }
+
+
+  function draw() {
+
+    const ctx = canvas.getContext("2d");
+    const d = window.devicePixelRatio || 1;
+
+    ctx.clearRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+
+    if (!points.length) {
+      return;
+    }
+
+
+    const color = accent();
+
+    ctx.lineWidth = 3 * d;
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+
+
+    if (points.length >= 2) {
+
+      ctx.save();
+
+      ctx.setLineDash([
+        8 * d,
+        6 * d
+      ]);
+
+      ctx.strokeStyle = "rgba(255,255,255,.72)";
+
+      ctx.beginPath();
+
+      ctx.moveTo(
+        points[0].x * d,
+        points[0].y * d
+      );
+
+      ctx.lineTo(
+        points[1].x * d,
+        points[1].y * d
+      );
+
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+
+    if (points.length >= 3) {
+
+      ctx.strokeStyle = color;
+
+      ctx.beginPath();
+
+      ctx.moveTo(
+        points[0].x * d,
+        points[0].y * d
+      );
+
+      ctx.lineTo(
+        points[2].x * d,
+        points[2].y * d
+      );
+
+      ctx.stroke();
+    }
+
+
+    const labels = [
+      "S",
+      "C",
+      "H"
+    ];
+
+
+    points.forEach((p, i) => {
+
+      ctx.fillStyle = color;
+
+      ctx.beginPath();
+
+      ctx.arc(
+        p.x * d,
+        p.y * d,
+        9 * d,
+        0,
+        Math.PI * 2
+      );
+
+      ctx.fill();
+
+
+      ctx.fillStyle = "#111";
+
+      ctx.font = `bold ${10 * d}px Arial`;
+
+      ctx.textAlign = "center";
+
+      ctx.textBaseline = "middle";
+
+      ctx.fillText(
+        labels[i],
+        p.x * d,
+        p.y * d
+      );
+
+    });
+
+  }
+
+
+  function calculate() {
+
+    saveButton.disabled = true;
+
+    measureCm = null;
+
+
+    if (points.length < 3) {
+
+      resultLabel.textContent = "Sin medición";
+
+      return;
+    }
+
+
+    const realHeight = parseFloat(
+      heightInput.value
+    );
+
+
+    if (
+      !Number.isFinite(realHeight)
+      || realHeight < 80
+      || realHeight > 230
+    ) {
+
+      resultLabel.textContent =
+        "Ingresa una altura válida";
+
+      pixelLabel.textContent =
+        "Usa un valor entre 80 y 230 cm";
+
+      return;
+    }
+
+
+    const fullPx = Math.hypot(
+      points[1].x - points[0].x,
+      points[1].y - points[0].y
+    );
+
+
+    const shoulderPx = Math.hypot(
+      points[2].x - points[0].x,
+      points[2].y - points[0].y
+    );
+
+
+    if (
+      fullPx < 20
+      || shoulderPx < 10
+    ) {
+
+      resultLabel.textContent =
+        "Repite los puntos";
+
+      pixelLabel.textContent =
+        "La referencia quedó demasiado corta";
+
+      return;
+    }
+
+
+    measureCm = Math.max(
+      40,
+      Math.min(
+        220,
+        (shoulderPx / fullPx) * realHeight
+      )
+    );
+
+
+    resultLabel.textContent =
+      `${(measureCm / 100).toFixed(2)} m (${measureCm.toFixed(1)} cm)`;
+
+
+    pixelLabel.textContent =
+      `Calibrado con altura total de ${realHeight.toFixed(1)} cm`;
+
+
+    help.textContent =
+      "Medición calculada. Puedes guardarla o reiniciar los puntos.";
+
+
+    saveButton.disabled = false;
+  }
+
+
+  function reset() {
+
+    points = [];
+
+    measureCm = null;
+
+    saveButton.disabled = true;
+
+    resultLabel.textContent =
+      "Sin medición";
+
+    pixelLabel.textContent =
+      "Calibración pendiente";
+
+    help.textContent =
+      "Ingresa la altura total de la persona y toca el suelo.";
+
+    draw();
+  }
+
+
+  async function openMeasure() {
+
+    dialog.showModal();
+
+    sizeCanvas();
+
+    reset();
+
+
+    try {
+
+      stream =
+        await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: {
+              ideal: "environment"
+            }
+          },
+          audio: false
+        });
+
+
+      video.srcObject = stream;
+
+    } catch (e) {
+
+      help.textContent =
+        "No se pudo abrir la cámara. Revisa el permiso del navegador y usa HTTPS o localhost.";
+
+    }
+
+  }
+
+
+  function closeMeasure() {
+
+    if (stream) {
+
+      stream
+        .getTracks()
+        .forEach(
+          track => track.stop()
+        );
+
+      stream = null;
+    }
+
+
+    dialog.close();
+  }
+
+
+  stage.addEventListener(
+    "pointerup",
+    event => {
+
+      if (points.length >= 3) {
+        return;
+      }
+
+
+      const r =
+        stage.getBoundingClientRect();
+
+
+      points.push({
+        x: event.clientX - r.left,
+        y: event.clientY - r.top
+      });
+
+
+      if (points.length === 1) {
+
+        help.textContent =
+          "Ahora toca la parte superior de la cabeza.";
+
+      }
+
+
+      if (points.length === 2) {
+
+        help.textContent =
+          "Ahora toca exactamente el hombro.";
+
+      }
+
+
+      if (points.length === 3) {
+        calculate();
+      }
+
+
+      draw();
+    }
+  );
+
+
+  heightInput.addEventListener(
+    "input",
+    () => {
+
+      if (points.length === 3) {
+        calculate();
+      }
+
+    }
+  );
+
+
+  document
+    .getElementById("openMeasure")
+    .addEventListener(
+      "click",
+      openMeasure
+    );
+
+
+  document
+    .getElementById("closeMeasure")
+    .addEventListener(
+      "click",
+      closeMeasure
+    );
+
+
+  document
+    .getElementById("resetMeasure")
+    .addEventListener(
+      "click",
+      reset
+    );
+
+
+  saveButton.addEventListener(
+    "click",
+    () => {
+
+      if (measureCm !== null) {
+
+        hidden.value =
+          measureCm.toFixed(1);
+
+
+        output.value =
+          `${(measureCm / 100).toFixed(2)} m (${measureCm.toFixed(1)} cm)`;
+
+
+        closeMeasure();
+      }
+
+    }
+  );
+
+
+  dialog.addEventListener(
+    "cancel",
+    event => {
+
+      event.preventDefault();
+
+      closeMeasure();
+
+    }
+  );
+
+
+  window.addEventListener(
+    "resize",
+    () => {
+
+      if (dialog.open) {
+        sizeCanvas();
+      }
+
+    }
+  );
+
+
+  const form =
+    document.getElementById("registroForm");
+
+
+  if (form) {
+
+    form.addEventListener(
+      "submit",
+      event => {
+
+        const a =
+          document.getElementById("id_correo");
+
+        const b =
+          document.getElementById("id_correo2");
+
+
+        if (
+          a
+          && b
+          && a.value.trim().toLowerCase()
+            !==
+            b.value.trim().toLowerCase()
+        ) {
+
+          event.preventDefault();
+
+          b.setCustomValidity(
+            "Los correos no coinciden"
+          );
+
+          b.reportValidity();
+
+        } else if (b) {
+
+          b.setCustomValidity("");
+
+        }
+
+      }
+    );
+
+
+    form.addEventListener(
+      "reset",
+      () => {
+
+        if (hidden) {
+          hidden.value = "";
+        }
+
+        if (output) {
+          output.value = "";
+        }
+
+        if (heightInput) {
+          heightInput.value = "";
+        }
+
+        reset();
+
+      }
+    );
+
+  }
+
+
+  if (
+    hidden
+    && hidden.value
+  ) {
+
+    const cm =
+      parseFloat(hidden.value);
+
+
+    if (Number.isFinite(cm)) {
+
+      output.value =
+        `${(cm / 100).toFixed(2)} m (${cm.toFixed(1)} cm)`;
+
+    }
+
+  }
+
+})();
+
+</script>
+
+{% endblock %}   

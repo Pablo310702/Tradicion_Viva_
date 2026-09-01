@@ -1,0 +1,851 @@
+{% if h %}
+
+{% if h.slug == "rosario-merced" or "Rosario" in h.nombre %}
+<style>
+:root{
+  --theme-page:#fff8fb;
+  --theme-surface:#ffffff;
+  --theme-surface-2:#f9e8ef;
+
+  /* Rosa pastel más suave */
+  --theme-header:#f0cfdb;
+  --theme-topbar:#c86f91;
+
+  --theme-text:#111111;
+  --theme-muted:#2f2f2f;
+  --theme-border:#d88aa7;
+
+  --theme-accent:#d88aa7;
+  --theme-accent-strong:#bd6386;
+
+  --theme-button:#e6afc3;
+  --theme-button-hover:#d990aa;
+  --theme-button-text:#111111;
+
+  --theme-dropdown:#efc5d4;
+  --theme-dropdown-hover:#e5aabe;
+  --theme-dropdown-text:#111111;
+
+  --theme-shadow:rgba(126,55,82,.16);
+}
+</style>
+
+{% elif h.slug == "san-jose" or "San José" in h.nombre or "San Jose" in h.nombre %}
+<style>
+:root{
+  --theme-page:#eef5ef;
+  --theme-surface:#ffffff;
+  --theme-surface-2:#dceadd;
+
+  --theme-header:#4c7958;
+  --theme-topbar:#315f3d;
+
+  --theme-text:#111111;
+  --theme-muted:#27332a;
+  --theme-border:#4f7d5b;
+
+  --theme-accent:#568765;
+  --theme-accent-strong:#386846;
+
+  --theme-button:#568765;
+  --theme-button-hover:#467654;
+  --theme-button-text:#ffffff;
+
+  --theme-dropdown:#c5ddca;
+  --theme-dropdown-hover:#a9cdb2;
+  --theme-dropdown-text:#111111;
+
+  --theme-shadow:rgba(39,89,52,.16);
+}
+</style>
+
+{% elif "Calvario" in h.nombre %}
+<style>
+:root{
+  --theme-page:#0b0b0b;
+  --theme-surface:#151515;
+  --theme-surface-2:#1d1b16;
+
+  --theme-header:#050505;
+  --theme-topbar:#d4af37;
+
+  --theme-text:#ffffff;
+  --theme-muted:#d0d0d0;
+  --theme-border:#8b7028;
+
+  --theme-accent:#d4af37;
+  --theme-accent-strong:#b48b18;
+
+  --theme-button:#d4af37;
+  --theme-button-hover:#e4c65c;
+  --theme-button-text:#111111;
+
+  --theme-dropdown:#292313;
+  --theme-dropdown-hover:#3c3218;
+  --theme-dropdown-text:#ffffff;
+
+  --theme-shadow:rgba(0,0,0,.34);
+}
+</style>
+
+{% elif "Desamparo" in h.nombre %}
+<style>
+:root{
+  --theme-page:#fffdf8;
+  --theme-surface:#ffffff;
+  --theme-surface-2:#fbf4df;
+
+  --theme-header:#ffffff;
+  --theme-topbar:#c9a33d;
+
+  --theme-text:#111111;
+  --theme-muted:#332d20;
+  --theme-border:#c9a33d;
+
+  --theme-accent:#c9a33d;
+  --theme-accent-strong:#9d791b;
+
+  --theme-button:#d6b75f;
+  --theme-button-hover:#c9a33d;
+  --theme-button-text:#111111;
+
+  --theme-dropdown:#f3e3ad;
+  --theme-dropdown-hover:#e8d18a;
+  --theme-dropdown-text:#111111;
+
+  --theme-shadow:rgba(130,101,28,.16);
+}
+</style>
+
+{% elif "Soledad" in h.nombre %}
+<style>
+:root{
+  --theme-page:#0b0b0b;
+  --theme-surface:#151515;
+  --theme-surface-2:#1d1b16;
+
+  --theme-header:#050505;
+  --theme-topbar:#d4af37;
+
+  --theme-text:#ffffff;
+  --theme-muted:#d0d0d0;
+  --theme-border:#8b7028;
+
+  --theme-accent:#d4af37;
+  --theme-accent-strong:#b48b18;
+
+  --theme-button:#d4af37;
+  --theme-button-hover:#e4c65c;
+  --theme-button-text:#111111;
+
+  --theme-dropdown:#292313;
+  --theme-dropdown-hover:#3c3218;
+  --theme-dropdown-text:#ffffff;
+
+  --theme-shadow:rgba(0,0,0,.34);
+}
+</style>
+
+{% else %}
+<style>
+:root{
+  --theme-page:#0f0f0f;
+  --theme-surface:#151515;
+  --theme-surface-2:#1d1d1d;
+
+  --theme-header:#080808;
+  --theme-topbar:#d4af37;
+
+  --theme-text:#ffffff;
+  --theme-muted:#c9c9c9;
+  --theme-border:#444444;
+
+  --theme-accent:#d4af37;
+  --theme-accent-strong:#b08d57;
+
+  --theme-button:#d4af37;
+  --theme-button-hover:#e4c65c;
+  --theme-button-text:#111111;
+
+  --theme-dropdown:#242424;
+  --theme-dropdown-hover:#333333;
+  --theme-dropdown-text:#ffffff;
+
+  --theme-shadow:rgba(0,0,0,.28);
+}
+</style>
+{% endif %}
+
+<style>
+
+/* ---------- Fondo general ---------- */
+html,
+body{
+  background:var(--theme-page)!important;
+  color:var(--theme-text)!important;
+}
+
+/* ---------- Franja superior ---------- */
+.topbar,
+.top-bar,
+.accent-bar,
+.site-accent{
+  background:var(--theme-topbar)!important;
+  background-color:var(--theme-topbar)!important;
+  border-color:var(--theme-topbar)!important;
+}
+
+/* ---------- Encabezado ---------- */
+header,
+.site-header,
+.main-header,
+.app-header,
+.org-header,
+.brand-header,
+.brand-bar,
+.brandbar,
+.header-inner,
+.header-shell,
+.masthead,
+body > header{
+  background:var(--theme-header)!important;
+  background-color:var(--theme-header)!important;
+  border-color:var(--theme-border)!important;
+}
+
+header a,
+header span,
+header strong,
+header .brand,
+.site-header *,
+.main-header *,
+.org-header *,
+.brand-header *,
+.brand-bar *{
+  color:var(--theme-text)!important;
+}
+
+/* ---------- BOTONES DE NAVEGACIÓN ---------- */
+/* Incluye enlaces simples, botones y dropdowns */
+nav > a,
+nav > button,
+nav > details > summary,
+nav a,
+nav button,
+nav summary,
+
+.org-nav > a,
+.org-nav > button,
+.org-nav > details > summary,
+.org-nav a,
+.org-nav button,
+.org-nav summary,
+
+.org-navigation > a,
+.org-navigation > button,
+.org-navigation > details > summary,
+.org-navigation a,
+.org-navigation button,
+.org-navigation summary,
+
+.hermandad-nav > a,
+.hermandad-nav > button,
+.hermandad-nav > details > summary,
+.hermandad-nav a,
+.hermandad-nav button,
+.hermandad-nav summary,
+
+.hermandad-navigation > a,
+.hermandad-navigation > button,
+.hermandad-navigation > details > summary,
+.hermandad-navigation a,
+.hermandad-navigation button,
+.hermandad-navigation summary,
+
+.organization-nav > a,
+.organization-nav > button,
+.organization-nav > details > summary,
+.organization-nav a,
+.organization-nav button,
+.organization-nav summary,
+
+.org-menu > a,
+.org-menu > button,
+.org-menu > details > summary,
+.org-menu a,
+.org-menu button,
+.org-menu summary,
+
+.nav-links > a,
+.nav-links > button,
+.nav-links > details > summary,
+
+.menu-links > a,
+.menu-links > button,
+.menu-links > details > summary,
+
+.nav-link,
+.nav-button,
+.menu-button,
+.dropdown-toggle,
+
+details > summary{
+  background:var(--theme-button)!important;
+  background-color:var(--theme-button)!important;
+  color:var(--theme-button-text)!important;
+  border:1px solid var(--theme-accent-strong)!important;
+  opacity:1!important;
+  box-shadow:none!important;
+}
+
+/* Algunos dropdowns tienen un SPAN interno con el fondo negro.
+   Por eso también se fuerza el elemento que está dentro del summary. */
+details > summary *,
+nav summary *,
+.org-nav summary *,
+.org-navigation summary *,
+.hermandad-nav summary *,
+.hermandad-navigation summary *,
+.organization-nav summary *,
+.org-menu summary *{
+  background:transparent!important;
+  background-color:transparent!important;
+  color:var(--theme-button-text)!important;
+  border-color:transparent!important;
+}
+
+/* Estado hover */
+nav a:hover,
+nav button:hover,
+nav summary:hover,
+.org-nav a:hover,
+.org-nav button:hover,
+.org-nav summary:hover,
+.org-navigation a:hover,
+.org-navigation button:hover,
+.org-navigation summary:hover,
+.hermandad-nav a:hover,
+.hermandad-nav button:hover,
+.hermandad-nav summary:hover,
+.hermandad-navigation a:hover,
+.hermandad-navigation button:hover,
+.hermandad-navigation summary:hover,
+.organization-nav a:hover,
+.organization-nav button:hover,
+.organization-nav summary:hover,
+.org-menu a:hover,
+.org-menu button:hover,
+.org-menu summary:hover,
+details > summary:hover{
+  background:var(--theme-button-hover)!important;
+  background-color:var(--theme-button-hover)!important;
+  color:var(--theme-button-text)!important;
+  border-color:var(--theme-accent-strong)!important;
+}
+
+/* Dropdown abierto */
+details[open] > summary,
+nav details[open] > summary,
+.org-nav details[open] > summary,
+.org-navigation details[open] > summary,
+.hermandad-nav details[open] > summary,
+.hermandad-navigation details[open] > summary,
+.organization-nav details[open] > summary,
+.org-menu details[open] > summary{
+  background:var(--theme-button-hover)!important;
+  background-color:var(--theme-button-hover)!important;
+  color:var(--theme-button-text)!important;
+  border-color:var(--theme-accent-strong)!important;
+}
+
+/* ---------- NUBE / PANEL DE OPCIONES ---------- */
+details[open] > :not(summary),
+nav details[open] > :not(summary),
+.org-nav details[open] > :not(summary),
+.org-navigation details[open] > :not(summary),
+.hermandad-nav details[open] > :not(summary),
+.hermandad-navigation details[open] > :not(summary),
+.organization-nav details[open] > :not(summary),
+.org-menu details[open] > :not(summary),
+
+.dropdown-menu,
+.dropdown-content,
+.org-dropdown,
+.org-dropdown-menu,
+.org-menu-dropdown,
+.nav-dropdown,
+.menu-dropdown,
+.org-menu-drawer,
+#orgMenuDrawer{
+  background:var(--theme-dropdown)!important;
+  background-color:var(--theme-dropdown)!important;
+  color:var(--theme-dropdown-text)!important;
+  border:2px solid var(--theme-accent-strong)!important;
+  opacity:1!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  box-shadow:0 12px 26px var(--theme-shadow)!important;
+  z-index:9999!important;
+}
+
+/* Letras del dropdown */
+details[open] > :not(summary) *,
+.dropdown-menu *,
+.dropdown-content *,
+.org-dropdown *,
+.org-dropdown-menu *,
+.org-menu-dropdown *,
+.nav-dropdown *,
+.menu-dropdown *,
+#orgMenuDrawer *{
+  color:var(--theme-dropdown-text)!important;
+}
+
+/* Enlaces dentro de la nube */
+details[open] > :not(summary) a,
+.dropdown-menu a,
+.dropdown-content a,
+.org-dropdown a,
+.org-dropdown-menu a,
+.org-menu-dropdown a,
+.nav-dropdown a,
+.menu-dropdown a,
+#orgMenuDrawer a{
+  background:transparent!important;
+  background-color:transparent!important;
+  color:var(--theme-dropdown-text)!important;
+  border-color:transparent!important;
+}
+
+/* Hover de las opciones */
+details[open] > :not(summary) a:hover,
+.dropdown-menu a:hover,
+.dropdown-content a:hover,
+.org-dropdown a:hover,
+.org-dropdown-menu a:hover,
+.org-menu-dropdown a:hover,
+.nav-dropdown a:hover,
+.menu-dropdown a:hover,
+#orgMenuDrawer a:hover{
+  background:var(--theme-dropdown-hover)!important;
+  background-color:var(--theme-dropdown-hover)!important;
+  color:var(--theme-dropdown-text)!important;
+}
+
+/* ---------- Tarjetas / secciones ---------- */
+.hero,
+.hero-body,
+.bloque,
+.content-card,
+.content-card-body,
+.institution-panel,
+.registro-form,
+.measurement-card,
+.templo-imagen-seccion,
+.empty-state,
+.marcha-card{
+  background:var(--theme-surface)!important;
+  background-color:var(--theme-surface)!important;
+  color:var(--theme-text)!important;
+  border-color:var(--theme-border)!important;
+  box-shadow:0 10px 28px var(--theme-shadow)!important;
+}
+
+.content-card-media{
+  background:var(--theme-surface-2)!important;
+}
+
+.linea{
+  background:var(--theme-accent)!important;
+}
+
+/* ---------- Botones generales ---------- */
+.btn,
+.btn-primary,
+.measure-button,
+.cta,
+.cta-button,
+.action-button,
+a.button,
+button.button{
+  background:var(--theme-button)!important;
+  background-color:var(--theme-button)!important;
+  color:var(--theme-button-text)!important;
+  border-color:var(--theme-accent-strong)!important;
+}
+
+/* ---------- Recorrido / seguimiento ---------- */
+.seguimiento-page,
+.seguimiento-shell,
+.tracking-page,
+.tracking-shell,
+.recorrido-page,
+.recorrido-shell{
+  background:var(--theme-page)!important;
+  color:var(--theme-text)!important;
+}
+
+.seguimiento-card,
+.tracking-card,
+.recorrido-card,
+.route-card,
+.intro-card,
+.tracking-intro,
+.recorrido-intro,
+.map-card,
+.map-panel,
+.map-shell,
+.turno-card,
+.turno-panel,
+.turno-actual,
+.status-card,
+.status-panel,
+.gps-card,
+.info-card,
+.info-panel{
+  background:var(--theme-surface)!important;
+  background-color:var(--theme-surface)!important;
+  color:var(--theme-text)!important;
+  border-color:var(--theme-border)!important;
+  box-shadow:0 10px 28px var(--theme-shadow)!important;
+}
+
+/* Leaflet se conserva normal */
+.leaflet-container,
+.leaflet-pane,
+.leaflet-tile-pane,
+.leaflet-map-pane{
+  color:initial;
+}
+
+/* ---------- TEXTO NEGRO EN TEMAS CLAROS ---------- */
+{% if h.slug == "rosario-merced" or h.slug == "san-jose" or "Rosario" in h.nombre or "San José" in h.nombre or "San Jose" in h.nombre or "Desamparo" in h.nombre %}
+body,
+main,
+.hero-body,
+.bloque,
+.content-card-body,
+.institution-panel,
+.empty-state,
+h1,h2,h3,h4,h5,h6,
+p,
+span,
+.titulo-seccion,
+.subtitulo,
+.contenido,
+.contenido p,
+.institution-panel p,
+.institution-panel h3,
+.meta,
+.templo-texto,
+.templo-nombre-seccion{
+  color:#111111!important;
+}
+
+/* No cambiar el texto de controles coloreados */
+nav a,
+nav button,
+nav summary,
+details > summary,
+.btn,
+.btn-primary,
+.measure-button,
+.cta,
+.cta-button,
+.action-button{
+  color:var(--theme-button-text)!important;
+}
+
+/* Opciones del menú */
+details[open] > :not(summary),
+details[open] > :not(summary) *{
+  color:var(--theme-dropdown-text)!important;
+}
+{% endif %}
+
+/* ---------- Temas oscuros ---------- */
+{% if "Calvario" in h.nombre or "Soledad" in h.nombre %}
+header *,
+.hero *,
+.bloque *,
+.content-card *,
+.institution-panel *{
+  color:#ffffff!important;
+}
+
+nav a,
+nav button,
+nav summary,
+details > summary,
+.btn,
+.btn-primary{
+  color:#111111!important;
+}
+{% endif %}
+
+</style>
+
+<style>
+
+/* =========================================================
+   CONTRASTE DE TEXTO EN RECORRIDO / TURNO
+   ========================================================= */
+
+{% if h.slug == "rosario-merced" or h.slug == "san-jose" or "Rosario" in h.nombre or "San José" in h.nombre or "San Jose" in h.nombre or "Desamparo" in h.nombre %}
+
+/* Valores y textos normales: negro real, sin opacidad. */
+main .turno-actual,
+main .turno-panel,
+main .turno-card,
+main .status-card,
+main .status-panel,
+main .gps-card,
+main .info-card,
+main .info-panel,
+main .tracking-card,
+main .recorrido-card,
+main .route-card,
+main [class*="turno"],
+main [class*="status"],
+main [class*="gps"],
+main [class*="info"] {
+    color: #171717 !important;
+    opacity: 1 !important;
+}
+
+main .turno-actual p,
+main .turno-actual span,
+main .turno-actual div,
+main .turno-panel p,
+main .turno-panel span,
+main .turno-panel div,
+main .turno-card p,
+main .turno-card span,
+main .turno-card div,
+main .status-card p,
+main .status-card span,
+main .status-card div,
+main .status-panel p,
+main .status-panel span,
+main .status-panel div,
+main .gps-card p,
+main .gps-card span,
+main .gps-card div,
+main .info-card p,
+main .info-card span,
+main .info-card div,
+main .info-panel p,
+main .info-panel span,
+main .info-panel div,
+main .tracking-card p,
+main .tracking-card span,
+main .tracking-card div,
+main .recorrido-card p,
+main .recorrido-card span,
+main .recorrido-card div,
+main .route-card p,
+main .route-card span,
+main .route-card div,
+main [class*="turno"] p,
+main [class*="turno"] span,
+main [class*="status"] p,
+main [class*="status"] span,
+main [class*="gps"] p,
+main [class*="gps"] span,
+main [class*="info"] p,
+main [class*="info"] span {
+    color: #171717 !important;
+    opacity: 1 !important;
+}
+
+/* Títulos */
+main .turno-actual h1,
+main .turno-actual h2,
+main .turno-actual h3,
+main .turno-panel h1,
+main .turno-panel h2,
+main .turno-panel h3,
+main .turno-card h1,
+main .turno-card h2,
+main .turno-card h3,
+main .status-card h2,
+main .status-card h3,
+main .info-card h2,
+main .info-card h3,
+main [class*="turno"] h1,
+main [class*="turno"] h2,
+main [class*="turno"] h3 {
+    color: #111111 !important;
+    opacity: 1 !important;
+}
+
+/* Etiquetas institucionales más oscuras para mejor lectura */
+{% if h.slug == "rosario-merced" or "Rosario" in h.nombre %}
+main .turno-actual strong,
+main .turno-panel strong,
+main .turno-card strong,
+main .status-card strong,
+main .status-panel strong,
+main .gps-card strong,
+main .info-card strong,
+main .info-panel strong,
+main .tracking-card strong,
+main .recorrido-card strong,
+main .route-card strong,
+main [class*="turno"] strong,
+main [class*="status"] strong,
+main [class*="gps"] strong,
+main [class*="info"] strong {
+    color: #a54f70 !important;
+    opacity: 1 !important;
+}
+
+{% elif h.slug == "san-jose" or "San José" in h.nombre or "San Jose" in h.nombre %}
+main .turno-actual strong,
+main .turno-panel strong,
+main .turno-card strong,
+main .status-card strong,
+main .status-panel strong,
+main .gps-card strong,
+main .info-card strong,
+main .info-panel strong,
+main .tracking-card strong,
+main .recorrido-card strong,
+main .route-card strong,
+main [class*="turno"] strong,
+main [class*="status"] strong,
+main [class*="gps"] strong,
+main [class*="info"] strong {
+    color: #356c47 !important;
+    opacity: 1 !important;
+}
+
+{% elif "Desamparo" in h.nombre %}
+main .turno-actual strong,
+main .turno-panel strong,
+main .turno-card strong,
+main .status-card strong,
+main .status-panel strong,
+main .gps-card strong,
+main .info-card strong,
+main .info-panel strong,
+main .tracking-card strong,
+main .recorrido-card strong,
+main .route-card strong,
+main [class*="turno"] strong,
+main [class*="status"] strong,
+main [class*="gps"] strong,
+main [class*="info"] strong {
+    color: #8b6818 !important;
+    opacity: 1 !important;
+}
+{% endif %}
+
+/* Los botones mantienen su texto institucional. */
+main .btn,
+main .btn *,
+main .btn-primary,
+main .btn-primary *,
+main .measure-button,
+main .measure-button *,
+main .cta,
+main .cta *,
+main .cta-button,
+main .cta-button *,
+main .action-button,
+main .action-button *,
+main a.button,
+main a.button *,
+main button.button,
+main button.button * {
+    color: var(--theme-button-text) !important;
+    opacity: 1 !important;
+}
+
+{% endif %}
+
+
+/* =========================================================
+   CALVARIO Y SOLEDAD
+   Se conservan blanco + dorado sobre negro.
+   ========================================================= */
+
+{% if "Calvario" in h.nombre or "Soledad" in h.nombre %}
+
+main .turno-actual,
+main .turno-panel,
+main .turno-card,
+main .status-card,
+main .status-panel,
+main .gps-card,
+main .info-card,
+main .info-panel,
+main .tracking-card,
+main .recorrido-card,
+main .route-card,
+main [class*="turno"],
+main [class*="status"],
+main [class*="gps"],
+main [class*="info"] {
+    color: #ffffff !important;
+    opacity: 1 !important;
+}
+
+main .turno-actual p,
+main .turno-actual span,
+main .turno-panel p,
+main .turno-panel span,
+main .turno-card p,
+main .turno-card span,
+main .status-card p,
+main .status-card span,
+main .status-panel p,
+main .status-panel span,
+main .gps-card p,
+main .gps-card span,
+main .info-card p,
+main .info-card span,
+main .info-panel p,
+main .info-panel span,
+main .tracking-card p,
+main .tracking-card span,
+main .recorrido-card p,
+main .recorrido-card span,
+main .route-card p,
+main .route-card span,
+main [class*="turno"] p,
+main [class*="turno"] span,
+main [class*="status"] p,
+main [class*="status"] span,
+main [class*="gps"] p,
+main [class*="gps"] span,
+main [class*="info"] p,
+main [class*="info"] span {
+    color: #f1f1f1 !important;
+    opacity: 1 !important;
+}
+
+main .turno-actual strong,
+main .turno-panel strong,
+main .turno-card strong,
+main .status-card strong,
+main .status-panel strong,
+main .gps-card strong,
+main .info-card strong,
+main .info-panel strong,
+main .tracking-card strong,
+main .recorrido-card strong,
+main .route-card strong,
+main [class*="turno"] strong,
+main [class*="status"] strong,
+main [class*="gps"] strong,
+main [class*="info"] strong {
+    color: #c59d45 !important;
+    opacity: 1 !important;
+}
+
+{% endif %}
+
+</style>
+
+{% endif %} 

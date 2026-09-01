@@ -1,105 +1,674 @@
 {% extends "web/base.html" %}
 
 {% block title %}{{ h.nombre }} | TRADICIÓN VIVA{% endblock %}
-{% block meta_description %}{% if h.descripcion_corta %}{{ h.descripcion_corta }}{% else %}Información, agenda y recorrido de {{ h.nombre }}.{% endif %}{% endblock %}
+
+{% block meta_description %}
+{% if h.descripcion_corta %}
+{{ h.descripcion_corta }}
+{% else %}
+Información, agenda y recorrido de {{ h.nombre }}.
+{% endif %}
+{% endblock %}
+
 {% block social_meta %}
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="TRADICIÓN VIVA">
   <meta property="og:title" content="{{ h.nombre }}">
-  <meta property="og:description" content="{% if h.descripcion_corta %}{{ h.descripcion_corta }}{% else %}Información, agenda y recorrido de {{ h.nombre }}.{% endif %}">
+  <meta
+    property="og:description"
+    content="{% if h.descripcion_corta %}{{ h.descripcion_corta }}{% else %}Información, agenda y recorrido de {{ h.nombre }}.{% endif %}"
+  >
   <meta property="og:url" content="{{ request.build_absolute_uri }}">
-  {% if h.portada %}<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ h.portada.url }}">{% endif %}
-  <meta name="twitter:card" content="{% if h.portada %}summary_large_image{% else %}summary{% endif %}">
+
+  {% if h.portada %}
+    <meta
+      property="og:image"
+      content="{{ request.scheme }}://{{ request.get_host }}{{ h.portada.url }}"
+    >
+  {% endif %}
+
+  <meta
+    name="twitter:card"
+    content="{% if h.portada %}summary_large_image{% else %}summary{% endif %}"
+  >
 {% endblock %}
 
-{% block topbar_style %}style="background: {{ h.color_acento|default:'#d4af37' }};"{% endblock %}
+
+{# =========================================================
+   PALETA DE COLORES POR ORGANIZACIÓN
+   ========================================================= #}
+
+{% if h.slug == "rosario-merced" or "Rosario" in h.nombre %}
+<style>
+  :root {
+    --theme-page: #fff7fa;
+    --theme-surface: #ffffff;
+    --theme-surface-2: #fbe8ef;
+    --theme-header: #f4d7e1;
+    --theme-header-text: #4a3039;
+    --theme-text: #4a3039;
+    --theme-muted: #816771;
+    --theme-border: #e8c9d4;
+    --theme-accent: #c9879e;
+    --theme-accent-strong: #a85f79;
+    --theme-on-accent: #ffffff;
+    --theme-shadow: rgba(112, 67, 83, .14);
+  }
+</style>
+
+{% elif h.slug == "san-jose" or "San José" in h.nombre or "San Jose" in h.nombre %}
+<style>
+  :root {
+    --theme-page: #f4faf5;
+    --theme-surface: #ffffff;
+    --theme-surface-2: #e6f1e8;
+    --theme-header: #dcebdd;
+    --theme-header-text: #253a2b;
+    --theme-text: #253a2b;
+    --theme-muted: #66786b;
+    --theme-border: #c8ddcd;
+    --theme-accent: #5f8568;
+    --theme-accent-strong: #3f684b;
+    --theme-on-accent: #ffffff;
+    --theme-shadow: rgba(49, 91, 59, .14);
+  }
+</style>
+
+{% elif "Calvario" in h.nombre %}
+<style>
+  :root {
+    --theme-page: #090909;
+    --theme-surface: #141414;
+    --theme-surface-2: #1b1b1b;
+    --theme-header: #050505;
+    --theme-header-text: #ffffff;
+    --theme-text: #f5f5f5;
+    --theme-muted: #bdbdbd;
+    --theme-border: #403723;
+    --theme-accent: #d4af37;
+    --theme-accent-strong: #b48b18;
+    --theme-on-accent: #111111;
+    --theme-shadow: rgba(0,0,0,.30);
+  }
+</style>
+
+{% elif "Desamparo" in h.nombre %}
+<style>
+  :root {
+    --theme-page: #fffdf7;
+    --theme-surface: #ffffff;
+    --theme-surface-2: #f8f1dc;
+    --theme-header: #ffffff;
+    --theme-header-text: #3d3526;
+    --theme-text: #3d3526;
+    --theme-muted: #786f5d;
+    --theme-border: #e5d4a5;
+    --theme-accent: #c4a035;
+    --theme-accent-strong: #9f7e1d;
+    --theme-on-accent: #ffffff;
+    --theme-shadow: rgba(110, 88, 28, .14);
+  }
+</style>
+
+{% elif "Soledad" in h.nombre %}
+<style>
+  :root {
+    --theme-page: #f7f5ef;
+    --theme-surface: #ffffff;
+    --theme-surface-2: #eeeae0;
+    --theme-header: #111111;
+    --theme-header-text: #ffffff;
+    --theme-text: #171717;
+    --theme-muted: #68645c;
+    --theme-border: #d8cfb9;
+    --theme-accent: #b58b2a;
+    --theme-accent-strong: #8f6b17;
+    --theme-on-accent: #ffffff;
+    --theme-shadow: rgba(0,0,0,.14);
+  }
+</style>
+
+{% else %}
+<style>
+  :root {
+    --theme-page: #0f0f0f;
+    --theme-surface: #151515;
+    --theme-surface-2: #1b1b1b;
+    --theme-header: #080808;
+    --theme-header-text: #ffffff;
+    --theme-text: #f5f5f5;
+    --theme-muted: #bdbdbd;
+    --theme-border: #303030;
+    --theme-accent: #d4af37;
+    --theme-accent-strong: #b08d57;
+    --theme-on-accent: #111111;
+    --theme-shadow: rgba(0,0,0,.25);
+  }
+</style>
+{% endif %}
+
+
+{% block topbar_style %}
+style="background: var(--theme-accent, #d4af37);"
+{% endblock %}
+
 
 {% block brand %}
-<a href="{% url 'web:home' %}" style="display:flex;align-items:center;gap:10px;">
-    {% if h.logo %}
-        <img src="{{ h.logo.url }}" style="height:40px;border-radius:8px;" alt="Logo de {{ h.nombre }}">
-    {% endif %}
-    {{ h.nombre }}
+<a
+  href="{% url 'web:home' %}"
+  class="theme-brand"
+>
+  {% if h.logo %}
+    <img
+      src="{{ h.logo.url }}"
+      class="theme-brand-logo"
+      alt="Logo de {{ h.nombre }}"
+    >
+  {% endif %}
+
+  <span>{{ h.nombre }}</span>
 </a>
 {% endblock %}
 
+
 {% block header_actions %}
-<button class="org-menu-toggle" id="orgMenuToggle" type="button" aria-label="Abrir menú" aria-controls="orgMenuDrawer" aria-expanded="false">
-  <span></span><span></span><span></span>
+<button
+  class="org-menu-toggle"
+  id="orgMenuToggle"
+  type="button"
+  aria-label="Abrir menú"
+  aria-controls="orgMenuDrawer"
+  aria-expanded="false"
+>
+  <span></span>
+  <span></span>
+  <span></span>
 </button>
 {% endblock %}
 
+
 {% block extra_css %}
 <style>
-  .hero{
-    border:1px solid #2a2a2a;
-    border-radius:16px;
-    overflow:hidden;
-    background:#151515;
-    box-shadow:0 12px 28px rgba(0,0,0,.25);
-    margin-bottom:18px;
+
+  /* =====================================================
+     FONDO GENERAL
+     ===================================================== */
+
+  html,
+  body {
+    background: var(--theme-page) !important;
+    color: var(--theme-text) !important;
   }
-  .cover{
-    height:320px;
-    background:#111;
-    background-size:cover;
-    background-position:center;
-    position:relative;
+
+  main,
+  .main,
+  .main-content,
+  .page-content,
+  .content-wrapper,
+  .container {
+    color: var(--theme-text);
   }
-  .cover::after{
-    content:"";
-    position:absolute;
-    inset:0;
-    background:linear-gradient(to bottom,rgba(0,0,0,.15),rgba(0,0,0,.65));
+
+
+  /* =====================================================
+     CABECERA GENERAL DE BASE.HTML
+     ===================================================== */
+
+  header,
+  .site-header,
+  .header,
+  .brand-bar,
+  .org-header,
+  .main-header {
+    background: var(--theme-header) !important;
+    color: var(--theme-header-text) !important;
+    border-color: var(--theme-border) !important;
   }
-  .hero-body{padding:16px;display:flex;gap:14px;align-items:flex-start}
-  .logo{width:72px;height:72px;border-radius:16px;background:#0f0f0f;border:1px solid #2a2a2a;overflow:hidden;flex:0 0 auto;display:grid;place-items:center}
-  .logo img{width:100%;height:100%;object-fit:cover;display:block}
-  h1{margin:0 0 8px;font-size:26px;font-weight:900}
-  .meta{color:#bdbdbd;margin:0 0 6px}
-  .btn{display:inline-block;margin-top:12px;padding:10px 14px;border-radius:12px;border:1px solid #2a2a2a;color:#fff;text-decoration:none;background:#121212}
-  .btn:hover{border-color:{{ h.color_acento|default:'#d4af37' }}}
-  @media (max-width:1050px){
-    .cover{height:300px}
+
+  header a,
+  .site-header a,
+  .header a,
+  .brand-bar a,
+  .org-header a,
+  .main-header a {
+    color: var(--theme-header-text) !important;
   }
-  @media (max-width:600px){
-    .cover{height:230px}
-    .hero-body{padding:14px}
-    h1{font-size:22px}
+
+  .theme-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--theme-header-text) !important;
+    text-decoration: none;
   }
+
+  .theme-brand-logo {
+    height: 40px;
+    width: 40px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--theme-border);
+  }
+
+
+  /* =====================================================
+     NAVEGACIÓN
+     ===================================================== */
+
+  .org-navigation,
+  .org-nav,
+  .hermandad-navigation,
+  .hermandad-nav,
+  .organization-nav {
+    background: transparent !important;
+  }
+
+  .org-navigation a,
+  .org-navigation button,
+  .org-nav a,
+  .org-nav button,
+  .hermandad-navigation a,
+  .hermandad-navigation button,
+  .hermandad-nav a,
+  .hermandad-nav button,
+  .organization-nav a,
+  .organization-nav button,
+  nav a,
+  nav button {
+    background: var(--theme-surface) !important;
+    color: var(--theme-text) !important;
+    border-color: var(--theme-border) !important;
+  }
+
+  .org-navigation a:hover,
+  .org-navigation button:hover,
+  .org-nav a:hover,
+  .org-nav button:hover,
+  .hermandad-navigation a:hover,
+  .hermandad-navigation button:hover,
+  .hermandad-nav a:hover,
+  .hermandad-nav button:hover,
+  .organization-nav a:hover,
+  .organization-nav button:hover,
+  nav a:hover,
+  nav button:hover {
+    border-color: var(--theme-accent) !important;
+    color: var(--theme-accent-strong) !important;
+  }
+
+  .dropdown-menu,
+  .dropdown-content,
+  .org-dropdown,
+  .org-menu-dropdown,
+  .org-menu-drawer,
+  #orgMenuDrawer {
+    background: var(--theme-surface) !important;
+    color: var(--theme-text) !important;
+    border-color: var(--theme-border) !important;
+  }
+
+  .dropdown-menu a,
+  .dropdown-content a,
+  .org-dropdown a,
+  .org-menu-dropdown a,
+  #orgMenuDrawer a {
+    color: var(--theme-text) !important;
+  }
+
+
+  /* =====================================================
+     PORTADA / HERO
+     ===================================================== */
+
+  .hero {
+    border: 1px solid var(--theme-border);
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--theme-surface);
+    box-shadow: 0 12px 30px var(--theme-shadow);
+    margin-bottom: 18px;
+  }
+
+  .cover {
+    height: 320px;
+    background: var(--theme-surface-2);
+    background-size: cover;
+    background-position: center;
+    position: relative;
+  }
+
+  .cover::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(0,0,0,.10),
+      rgba(0,0,0,.38)
+    );
+  }
+
+  .hero-body {
+    padding: 18px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    background: var(--theme-surface) !important;
+    color: var(--theme-text) !important;
+  }
+
+  .logo {
+    width: 72px;
+    height: 72px;
+    border-radius: 16px;
+    background: var(--theme-surface-2);
+    border: 1px solid var(--theme-border);
+    overflow: hidden;
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+  }
+
+  .logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .hero h1 {
+    color: var(--theme-text) !important;
+    margin: 0 0 8px;
+    font-size: 26px;
+    font-weight: 900;
+  }
+
+  .meta {
+    color: var(--theme-muted) !important;
+    margin: 0 0 6px;
+  }
+
+  .hero-body p {
+    color: var(--theme-text) !important;
+  }
+
+  .btn {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--theme-border);
+    color: var(--theme-text) !important;
+    text-decoration: none;
+    background: var(--theme-surface-2) !important;
+  }
+
+  .btn:hover {
+    border-color: var(--theme-accent) !important;
+    color: var(--theme-accent-strong) !important;
+  }
+
+
+  /* =====================================================
+     PIE DE PÁGINA
+     ===================================================== */
+
+  footer,
+  .site-footer,
+  .footer {
+    background: var(--theme-header) !important;
+    color: var(--theme-header-text) !important;
+    border-color: var(--theme-border) !important;
+  }
+
+
+  /* =====================================================
+     AJUSTES ESPECÍFICOS DE TEMAS CLAROS
+     ===================================================== */
+
+  {% if h.slug == "rosario-merced" or h.slug == "san-jose" or "Desamparo" in h.nombre or "Soledad" in h.nombre %}
+  .hero {
+    box-shadow: 0 12px 34px var(--theme-shadow);
+  }
+
+  .hero-body {
+    border-top: 1px solid var(--theme-border);
+  }
+  {% endif %}
+
+
+  /* =====================================================
+     RESPONSIVE
+     ===================================================== */
+
+  @media (max-width: 1050px) {
+    .cover {
+      height: 300px;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .cover {
+      height: 230px;
+    }
+
+    .hero-body {
+      padding: 14px;
+    }
+
+    .hero h1 {
+      font-size: 22px;
+    }
+  }
+
+
+
+  /* =====================================================
+     NAVEGACIÓN INSTITUCIONAL
+     Incluye enlaces, botones y <summary> de los menús
+     desplegables para evitar que conserven el negro global.
+     ===================================================== */
+
+  nav a,
+  nav button,
+  nav summary,
+  nav details > summary,
+  .org-nav a,
+  .org-nav button,
+  .org-nav summary,
+  .org-navigation a,
+  .org-navigation button,
+  .org-navigation summary,
+  .hermandad-nav a,
+  .hermandad-nav button,
+  .hermandad-nav summary,
+  .hermandad-navigation a,
+  .hermandad-navigation button,
+  .hermandad-navigation summary,
+  .organization-nav a,
+  .organization-nav button,
+  .organization-nav summary,
+  .nav-link,
+  .nav-button,
+  .menu-button,
+  .dropdown-toggle {
+    background: var(--theme-surface) !important;
+    color: var(--theme-text) !important;
+    border: 1px solid var(--theme-border) !important;
+    box-shadow: none !important;
+  }
+
+  nav a:hover,
+  nav button:hover,
+  nav summary:hover,
+  nav details > summary:hover,
+  .org-nav a:hover,
+  .org-nav button:hover,
+  .org-nav summary:hover,
+  .org-navigation a:hover,
+  .org-navigation button:hover,
+  .org-navigation summary:hover,
+  .hermandad-nav a:hover,
+  .hermandad-nav button:hover,
+  .hermandad-nav summary:hover,
+  .hermandad-navigation a:hover,
+  .hermandad-navigation button:hover,
+  .hermandad-navigation summary:hover,
+  .organization-nav a:hover,
+  .organization-nav button:hover,
+  .organization-nav summary:hover,
+  .nav-link:hover,
+  .nav-button:hover,
+  .menu-button:hover,
+  .dropdown-toggle:hover {
+    background: var(--theme-surface-2) !important;
+    color: var(--theme-accent-strong) !important;
+    border-color: var(--theme-accent) !important;
+  }
+
+  nav details[open] > summary,
+  .org-nav details[open] > summary,
+  .org-navigation details[open] > summary,
+  .hermandad-nav details[open] > summary,
+  .hermandad-navigation details[open] > summary,
+  .organization-nav details[open] > summary {
+    background: var(--theme-accent) !important;
+    color: var(--theme-on-accent) !important;
+    border-color: var(--theme-accent) !important;
+  }
+
+  nav details > div,
+  nav details > ul,
+  nav details > menu,
+  .dropdown-menu,
+  .dropdown-content,
+  .org-dropdown,
+  .org-menu-dropdown,
+  .org-menu-drawer,
+  #orgMenuDrawer {
+    background: var(--theme-surface) !important;
+    color: var(--theme-text) !important;
+    border-color: var(--theme-border) !important;
+    box-shadow: 0 12px 28px var(--theme-shadow) !important;
+  }
+
+  nav details > div a,
+  nav details > ul a,
+  nav details > menu a,
+  .dropdown-menu a,
+  .dropdown-content a,
+  .org-dropdown a,
+  .org-menu-dropdown a,
+  #orgMenuDrawer a {
+    background: transparent !important;
+    color: var(--theme-text) !important;
+    border-color: transparent !important;
+  }
+
+  nav details > div a:hover,
+  nav details > ul a:hover,
+  nav details > menu a:hover,
+  .dropdown-menu a:hover,
+  .dropdown-content a:hover,
+  .org-dropdown a:hover,
+  .org-menu-dropdown a:hover,
+  #orgMenuDrawer a:hover {
+    background: var(--theme-surface-2) !important;
+    color: var(--theme-accent-strong) !important;
+  }
+
 </style>
 {% endblock %}
 
+
 {% block content %}
+
 {% include "web/_hermandad_navigation.html" %}
 
 <section class="hero">
+
   {% if h.portada %}
-    <div class="cover" style="background-image:url('{{ h.portada.url }}');"></div>
+    <div
+      class="cover"
+      style="background-image:url('{{ h.portada.url }}');"
+    ></div>
   {% else %}
-    <div class="cover" style="background-image:linear-gradient(135deg,#1a1a1a,#101010);"></div>
+    <div
+      class="cover"
+      style="background-image:linear-gradient(135deg,var(--theme-surface-2),var(--theme-surface));"
+    ></div>
   {% endif %}
 
+
   <div class="hero-body">
+
     <div class="logo">
+
       {% if h.logo %}
-        <img src="{{ h.logo.url }}" alt="Logo {{ h.nombre }}">
+        <img
+          src="{{ h.logo.url }}"
+          alt="Logo {{ h.nombre }}"
+        >
       {% else %}
-        <span style="color:#666;font-size:12px;">Logo</span>
+        <span
+          style="
+            color:var(--theme-muted);
+            font-size:12px;
+          "
+        >
+          Logo
+        </span>
       {% endif %}
+
     </div>
 
+
     <div>
-      <h1>{{ h.nombre }}</h1>
-      {% if h.templo %}<p class="meta">{{ h.templo }}</p>{% endif %}
-      <p class="meta">{{ h.ciudad }}</p>
-      {% if h.descripcion_corta %}
-        <p>{{ h.descripcion_corta }}</p>
-      {% else %}
-        <p style="color:#bdbdbd;">Aquí irá la información oficial de esta hermandad.</p>
+
+      <h1>
+        {{ h.nombre }}
+      </h1>
+
+      {% if h.templo %}
+        <p class="meta">
+          {{ h.templo }}
+        </p>
       {% endif %}
-      <a class="btn" href="{% url 'web:home' %}">← Ver todas las hermandades</a>
+
+      <p class="meta">
+        {{ h.ciudad }}
+      </p>
+
+
+      {% if h.descripcion_corta %}
+
+        <p>
+          {{ h.descripcion_corta }}
+        </p>
+
+      {% else %}
+
+        <p
+          style="color:var(--theme-muted) !important;"
+        >
+          Aquí irá la información oficial de esta hermandad.
+        </p>
+
+      {% endif %}
+
+
+      <a
+        class="btn"
+        href="{% url 'web:home' %}"
+      >
+        ← Ver todas las hermandades
+      </a>
+
     </div>
+
   </div>
+
 </section>
+
 {% endblock %}
+

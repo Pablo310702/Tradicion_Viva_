@@ -1,132 +1,732 @@
-<nav class="org-desktop-menu" aria-label="Navegación de {{ h.nombre }}" style="--org-accent:{{ h.color_acento|default:'#d4af37' }};">
-  <a class="org-menu-link" href="{% url 'web:hermandad_detalle' h.slug %}">Inicio</a>
+{% include "web/_tema_organizacion_css.html" %}
 
-  <div class="org-menu-item">
-    <span class="org-menu-link">{{ h.etiqueta_organizacion }} ▼</span>
-    <div class="org-dropdown">
-      <a href="{% url 'web:seccion_generica' h.slug 'mision-vision' %}">Misión y Visión</a>
-      <a href="{% url 'web:seccion_generica' h.slug 'nuestras-imagenes' %}">Nuestras Imágenes</a>
-      <a href="{% url 'web:seccion_generica' h.slug 'templo' %}">Templo</a>
+<style>
+/* =========================================================
+   NAVEGACIÓN ESPECÍFICA DE HERMANDAD / COFRADÍA
+   ========================================================= */
+
+/* -------------------------
+   MENÚ DE ESCRITORIO
+   ------------------------- */
+
+.org-desktop-menu {
+    position: relative;
+    z-index: 1000;
+}
+
+/* TODOS los botones:
+   Inicio, Cofradía, Agenda, Multimedia, Recorrido y Devotos */
+.org-desktop-menu .org-menu-link,
+.org-desktop-menu a.org-menu-link,
+.org-desktop-menu span.org-menu-link {
+    background: var(--theme-button) !important;
+    background-color: var(--theme-button) !important;
+
+    color: var(--theme-button-text) !important;
+
+    border: 1px solid var(--theme-accent-strong) !important;
+    border-radius: 10px !important;
+
+    opacity: 1 !important;
+
+    box-shadow: none !important;
+
+    text-decoration: none !important;
+
+    transition:
+        background-color .20s ease,
+        border-color .20s ease,
+        transform .20s ease !important;
+}
+
+
+/* Muy importante:
+   los desplegables son SPAN, no botones */
+.org-desktop-menu .org-menu-item > span.org-menu-link {
+    background: var(--theme-button) !important;
+    background-color: var(--theme-button) !important;
+
+    color: var(--theme-button-text) !important;
+
+    border-color: var(--theme-accent-strong) !important;
+
+    cursor: pointer;
+}
+
+
+/* Hover de todos */
+.org-desktop-menu .org-menu-link:hover,
+.org-desktop-menu a.org-menu-link:hover,
+.org-desktop-menu span.org-menu-link:hover,
+.org-desktop-menu .org-menu-item:hover > .org-menu-link {
+    background: var(--theme-button-hover) !important;
+    background-color: var(--theme-button-hover) !important;
+
+    color: var(--theme-button-text) !important;
+
+    border-color: var(--theme-accent-strong) !important;
+}
+
+
+/* -------------------------
+   NUBE DESPLEGABLE
+   ------------------------- */
+
+.org-desktop-menu .org-dropdown {
+    background: var(--theme-dropdown) !important;
+    background-color: var(--theme-dropdown) !important;
+
+    color: var(--theme-dropdown-text) !important;
+
+    border: 2px solid var(--theme-accent-strong) !important;
+    border-radius: 12px !important;
+
+    opacity: 1 !important;
+
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+
+    box-shadow:
+        0 14px 30px var(--theme-shadow) !important;
+
+    overflow: hidden;
+
+    z-index: 9999 !important;
+}
+
+
+/* Opciones de la nube */
+.org-desktop-menu .org-dropdown a {
+    display: block !important;
+
+    background: var(--theme-dropdown) !important;
+    background-color: var(--theme-dropdown) !important;
+
+    color: var(--theme-dropdown-text) !important;
+
+    border: 0 !important;
+    border-radius: 0 !important;
+
+    opacity: 1 !important;
+
+    box-shadow: none !important;
+
+    text-decoration: none !important;
+}
+
+
+/* Hover de las opciones */
+.org-desktop-menu .org-dropdown a:hover {
+    background: var(--theme-dropdown-hover) !important;
+    background-color: var(--theme-dropdown-hover) !important;
+
+    color: var(--theme-dropdown-text) !important;
+}
+
+
+/* -------------------------
+   MENÚ MÓVIL
+   ------------------------- */
+
+.org-menu-drawer {
+    background: var(--theme-surface) !important;
+    background-color: var(--theme-surface) !important;
+
+    color: var(--theme-text) !important;
+
+    border-color: var(--theme-accent-strong) !important;
+}
+
+
+.org-drawer-top {
+    background: var(--theme-header) !important;
+    background-color: var(--theme-header) !important;
+
+    border-color: var(--theme-border) !important;
+}
+
+
+.org-drawer-brand,
+.org-drawer-brand span {
+    color: var(--theme-text) !important;
+}
+
+
+.org-menu-close {
+    background: var(--theme-button) !important;
+    background-color: var(--theme-button) !important;
+
+    color: var(--theme-button-text) !important;
+
+    border-color: var(--theme-accent-strong) !important;
+}
+
+
+/* Inicio y Agenda móvil */
+.org-drawer-links > a {
+    background: var(--theme-button) !important;
+    background-color: var(--theme-button) !important;
+
+    color: var(--theme-button-text) !important;
+
+    border: 1px solid var(--theme-accent-strong) !important;
+}
+
+
+/* Cofradía, Multimedia, Recorrido y Devotos móvil */
+.org-drawer-links details > summary {
+    background: var(--theme-button) !important;
+    background-color: var(--theme-button) !important;
+
+    color: var(--theme-button-text) !important;
+
+    border: 1px solid var(--theme-accent-strong) !important;
+
+    opacity: 1 !important;
+}
+
+
+/* Menú móvil abierto */
+.org-drawer-links details[open] > summary {
+    background: var(--theme-button-hover) !important;
+    background-color: var(--theme-button-hover) !important;
+
+    color: var(--theme-button-text) !important;
+}
+
+
+/* Nube/submenú móvil */
+.org-drawer-submenu {
+    background: var(--theme-dropdown) !important;
+    background-color: var(--theme-dropdown) !important;
+
+    border: 1px solid var(--theme-accent-strong) !important;
+
+    opacity: 1 !important;
+
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+
+.org-drawer-submenu a {
+    background: var(--theme-dropdown) !important;
+    background-color: var(--theme-dropdown) !important;
+
+    color: var(--theme-dropdown-text) !important;
+
+    border: 0 !important;
+}
+
+
+.org-drawer-submenu a:hover {
+    background: var(--theme-dropdown-hover) !important;
+    background-color: var(--theme-dropdown-hover) !important;
+
+    color: var(--theme-dropdown-text) !important;
+}
+
+
+/* Oscurecimiento detrás del menú móvil */
+.org-menu-overlay.is-open {
+    background: rgba(0, 0, 0, .55) !important;
+}
+
+
+/* =========================================================
+   ROSARIO
+   Negro en todas las letras de navegación
+   ========================================================= */
+
+{% if h.slug == "rosario-merced" or "Rosario" in h.nombre %}
+
+.org-desktop-menu .org-menu-link,
+.org-desktop-menu .org-menu-link *,
+.org-desktop-menu .org-dropdown,
+.org-desktop-menu .org-dropdown *,
+.org-drawer-links,
+.org-drawer-links *,
+.org-menu-close {
+    color: #111111 !important;
+}
+
+{% endif %}
+
+
+/* =========================================================
+   SAN JOSÉ
+   ========================================================= */
+
+{% if h.slug == "san-jose" or "San José" in h.nombre or "San Jose" in h.nombre %}
+
+.org-desktop-menu .org-dropdown,
+.org-desktop-menu .org-dropdown *,
+.org-drawer-submenu,
+.org-drawer-submenu * {
+    color: #111111 !important;
+}
+
+{% endif %}
+
+
+/* =========================================================
+   CALVARIO Y SOLEDAD
+   Dorado con letra negra en botones
+   ========================================================= */
+
+{% if "Calvario" in h.nombre or "Soledad" in h.nombre %}
+
+.org-desktop-menu .org-menu-link,
+.org-desktop-menu .org-menu-link *,
+.org-drawer-links > a,
+.org-drawer-links details > summary,
+.org-menu-close {
+    color: #111111 !important;
+}
+
+.org-desktop-menu .org-dropdown,
+.org-desktop-menu .org-dropdown *,
+.org-drawer-submenu,
+.org-drawer-submenu * {
+    color: #ffffff !important;
+}
+
+{% endif %}
+
+</style>
+
+
+<nav
+    class="org-desktop-menu"
+    aria-label="Navegación de {{ h.nombre }}"
+>
+
+    <!-- INICIO -->
+    <a
+        class="org-menu-link"
+        href="{% url 'web:hermandad_detalle' h.slug %}"
+    >
+        Inicio
+    </a>
+
+
+    <!-- HERMANDAD / COFRADÍA -->
+    <div class="org-menu-item">
+
+        <span class="org-menu-link">
+            {{ h.etiqueta_organizacion }} ▼
+        </span>
+
+        <div class="org-dropdown">
+
+            <a href="{% url 'web:seccion_generica' h.slug 'mision-vision' %}">
+                Misión y Visión
+            </a>
+
+            <a href="{% url 'web:seccion_generica' h.slug 'nuestras-imagenes' %}">
+                Nuestras Imágenes
+            </a>
+
+            <a href="{% url 'web:seccion_generica' h.slug 'templo' %}">
+                Templo
+            </a>
+
+        </div>
+
     </div>
-  </div>
 
-  <a class="org-menu-link" href="{% url 'web:seccion_generica' h.slug 'agenda' %}">Agenda</a>
 
-  <div class="org-menu-item">
-    <span class="org-menu-link">Multimedia ▼</span>
-    <div class="org-dropdown">
-      <a href="{% url 'web:seccion_generica' h.slug 'galeria-fotos' %}">Galería de fotos</a>
-      <a href="{% url 'web:seccion_generica' h.slug 'galeria-filmica' %}">Galería fílmica</a>
-      <a href="{% url 'web:seccion_generica' h.slug 'marchas' %}">{{ h.etiqueta_musica }}</a>
+    <!-- AGENDA -->
+    <a
+        class="org-menu-link"
+        href="{% url 'web:seccion_generica' h.slug 'agenda' %}"
+    >
+        Agenda
+    </a>
+
+
+    <!-- MULTIMEDIA -->
+    <div class="org-menu-item">
+
+        <span class="org-menu-link">
+            Multimedia ▼
+        </span>
+
+        <div class="org-dropdown">
+
+            <a href="{% url 'web:seccion_generica' h.slug 'galeria-fotos' %}">
+                Galería de fotos
+            </a>
+
+            <a href="{% url 'web:seccion_generica' h.slug 'galeria-filmica' %}">
+                Galería fílmica
+            </a>
+
+            <a href="{% url 'web:seccion_generica' h.slug 'marchas' %}">
+                {{ h.etiqueta_musica }}
+            </a>
+
+        </div>
+
     </div>
-  </div>
 
-  <div class="org-menu-item">
-    <span class="org-menu-link">Recorrido ▼</span>
-    <div class="org-dropdown">
-      <a href="{% url 'web:seguimiento' h.slug %}">Seguimiento en vivo</a>
-    </div>
-  </div>
 
-  <div class="org-menu-item">
-    <span class="org-menu-link">Devotos ▼</span>
-    <div class="org-dropdown">
-      <a href="{% url 'web:seccion_generica' h.slug 'registro-actualizacion-datos' %}">Registro</a>
-      {% if request.session.cuenta_devoto_id %}
-        <a href="{% url 'web:devoto_panel' %}">Mi cuenta</a>
-      {% else %}
-        <a href="{% url 'web:devoto_login' %}">Iniciar sesión</a>
-      {% endif %}
+    <!-- RECORRIDO -->
+    <div class="org-menu-item">
+
+        <span class="org-menu-link">
+            Recorrido ▼
+        </span>
+
+        <div class="org-dropdown">
+
+            <a href="{% url 'web:seguimiento' h.slug %}">
+                Seguimiento en vivo
+            </a>
+
+        </div>
+
     </div>
-  </div>
+
+
+    <!-- DEVOTOS -->
+    <div class="org-menu-item">
+
+        <span class="org-menu-link">
+            Devotos ▼
+        </span>
+
+        <div class="org-dropdown">
+
+            <a href="{% url 'web:seccion_generica' h.slug 'registro-actualizacion-datos' %}">
+                Registro
+            </a>
+
+            {% if request.session.cuenta_devoto_id %}
+
+                <a href="{% url 'web:devoto_panel' %}">
+                    Mi cuenta
+                </a>
+
+            {% else %}
+
+                <a href="{% url 'web:devoto_login' %}">
+                    Iniciar sesión
+                </a>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
 </nav>
 
-<button class="org-menu-overlay" id="orgMenuOverlay" type="button" aria-label="Cerrar menú"></button>
-<aside class="org-menu-drawer" id="orgMenuDrawer" aria-hidden="true" style="--org-accent:{{ h.color_acento|default:'#d4af37' }};">
-  <div class="org-drawer-top">
-    <a class="org-drawer-brand" href="{% url 'web:hermandad_detalle' h.slug %}">
-      {% if h.logo %}<img src="{{ h.logo.url }}" alt="Logo de {{ h.nombre }}">{% endif %}
-      <span>{{ h.nombre }}</span>
-    </a>
-    <button type="button" class="org-menu-close" id="orgMenuClose" aria-label="Cerrar menú">×</button>
-  </div>
 
-  <div class="org-drawer-links">
-    <a href="{% url 'web:hermandad_detalle' h.slug %}">Inicio</a>
+<!-- =====================================================
+     MENÚ MÓVIL
+     ===================================================== -->
 
-    <details>
-      <summary>{{ h.etiqueta_organizacion }}</summary>
-      <div class="org-drawer-submenu">
-        <a href="{% url 'web:seccion_generica' h.slug 'mision-vision' %}">Misión y Visión</a>
-        <a href="{% url 'web:seccion_generica' h.slug 'nuestras-imagenes' %}">Nuestras Imágenes</a>
-        <a href="{% url 'web:seccion_generica' h.slug 'templo' %}">Templo</a>
-      </div>
-    </details>
+<button
+    class="org-menu-overlay"
+    id="orgMenuOverlay"
+    type="button"
+    aria-label="Cerrar menú"
+>
+</button>
 
-    <a href="{% url 'web:seccion_generica' h.slug 'agenda' %}">Agenda</a>
 
-    <details>
-      <summary>Multimedia</summary>
-      <div class="org-drawer-submenu">
-        <a href="{% url 'web:seccion_generica' h.slug 'galeria-fotos' %}">Galería de fotos</a>
-        <a href="{% url 'web:seccion_generica' h.slug 'galeria-filmica' %}">Galería fílmica</a>
-        <a href="{% url 'web:seccion_generica' h.slug 'marchas' %}">{{ h.etiqueta_musica }}</a>
-      </div>
-    </details>
+<aside
+    class="org-menu-drawer"
+    id="orgMenuDrawer"
+    aria-hidden="true"
+>
 
-    <details>
-      <summary>Recorrido</summary>
-      <div class="org-drawer-submenu">
-        <a href="{% url 'web:seguimiento' h.slug %}">Seguimiento en vivo</a>
-      </div>
-    </details>
+    <div class="org-drawer-top">
 
-    <details>
-      <summary>Devotos</summary>
-      <div class="org-drawer-submenu">
-        <a href="{% url 'web:seccion_generica' h.slug 'registro-actualizacion-datos' %}">Registro</a>
-        {% if request.session.cuenta_devoto_id %}
-          <a href="{% url 'web:devoto_panel' %}">Mi cuenta</a>
-        {% else %}
-          <a href="{% url 'web:devoto_login' %}">Iniciar sesión</a>
-        {% endif %}
-      </div>
-    </details>
-  </div>
+        <a
+            class="org-drawer-brand"
+            href="{% url 'web:hermandad_detalle' h.slug %}"
+        >
+
+            {% if h.logo %}
+                <img
+                    src="{{ h.logo.url }}"
+                    alt="Logo de {{ h.nombre }}"
+                >
+            {% endif %}
+
+            <span>
+                {{ h.nombre }}
+            </span>
+
+        </a>
+
+
+        <button
+            type="button"
+            class="org-menu-close"
+            id="orgMenuClose"
+            aria-label="Cerrar menú"
+        >
+            ×
+        </button>
+
+    </div>
+
+
+    <div class="org-drawer-links">
+
+        <a href="{% url 'web:hermandad_detalle' h.slug %}">
+            Inicio
+        </a>
+
+
+        <details>
+
+            <summary>
+                {{ h.etiqueta_organizacion }}
+            </summary>
+
+            <div class="org-drawer-submenu">
+
+                <a href="{% url 'web:seccion_generica' h.slug 'mision-vision' %}">
+                    Misión y Visión
+                </a>
+
+                <a href="{% url 'web:seccion_generica' h.slug 'nuestras-imagenes' %}">
+                    Nuestras Imágenes
+                </a>
+
+                <a href="{% url 'web:seccion_generica' h.slug 'templo' %}">
+                    Templo
+                </a>
+
+            </div>
+
+        </details>
+
+
+        <a href="{% url 'web:seccion_generica' h.slug 'agenda' %}">
+            Agenda
+        </a>
+
+
+        <details>
+
+            <summary>
+                Multimedia
+            </summary>
+
+            <div class="org-drawer-submenu">
+
+                <a href="{% url 'web:seccion_generica' h.slug 'galeria-fotos' %}">
+                    Galería de fotos
+                </a>
+
+                <a href="{% url 'web:seccion_generica' h.slug 'galeria-filmica' %}">
+                    Galería fílmica
+                </a>
+
+                <a href="{% url 'web:seccion_generica' h.slug 'marchas' %}">
+                    {{ h.etiqueta_musica }}
+                </a>
+
+            </div>
+
+        </details>
+
+
+        <details>
+
+            <summary>
+                Recorrido
+            </summary>
+
+            <div class="org-drawer-submenu">
+
+                <a href="{% url 'web:seguimiento' h.slug %}">
+                    Seguimiento en vivo
+                </a>
+
+            </div>
+
+        </details>
+
+
+        <details>
+
+            <summary>
+                Devotos
+            </summary>
+
+            <div class="org-drawer-submenu">
+
+                <a href="{% url 'web:seccion_generica' h.slug 'registro-actualizacion-datos' %}">
+                    Registro
+                </a>
+
+
+                {% if request.session.cuenta_devoto_id %}
+
+                    <a href="{% url 'web:devoto_panel' %}">
+                        Mi cuenta
+                    </a>
+
+                {% else %}
+
+                    <a href="{% url 'web:devoto_login' %}">
+                        Iniciar sesión
+                    </a>
+
+                {% endif %}
+
+            </div>
+
+        </details>
+
+    </div>
+
 </aside>
+
 
 <script>
 (() => {
-  const toggle = document.getElementById('orgMenuToggle');
-  const drawer = document.getElementById('orgMenuDrawer');
-  const overlay = document.getElementById('orgMenuOverlay');
-  const closeButton = document.getElementById('orgMenuClose');
-  if (!toggle || !drawer || !overlay || !closeButton) return;
 
-  const openMenu = () => {
-    drawer.classList.add('is-open');
-    overlay.classList.add('is-open');
-    drawer.setAttribute('aria-hidden', 'false');
-    toggle.setAttribute('aria-expanded', 'true');
-    document.body.classList.add('org-menu-open');
-  };
-  const closeMenu = () => {
-    drawer.classList.remove('is-open');
-    overlay.classList.remove('is-open');
-    drawer.setAttribute('aria-hidden', 'true');
-    toggle.setAttribute('aria-expanded', 'false');
-    document.body.classList.remove('org-menu-open');
-  };
+    const toggle =
+        document.getElementById('orgMenuToggle');
 
-  toggle.addEventListener('click', openMenu);
-  overlay.addEventListener('click', closeMenu);
-  closeButton.addEventListener('click', closeMenu);
-  drawer.querySelectorAll('a').forEach(link => link.addEventListener('click', closeMenu));
-  document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && drawer.classList.contains('is-open')) closeMenu();
-  });
-  window.addEventListener('resize', () => {
-    if (window.innerWidth > 1050 && drawer.classList.contains('is-open')) closeMenu();
-  });
+    const drawer =
+        document.getElementById('orgMenuDrawer');
+
+    const overlay =
+        document.getElementById('orgMenuOverlay');
+
+    const closeButton =
+        document.getElementById('orgMenuClose');
+
+
+    if (
+        !toggle ||
+        !drawer ||
+        !overlay ||
+        !closeButton
+    ) {
+        return;
+    }
+
+
+    const openMenu = () => {
+
+        drawer.classList.add('is-open');
+
+        overlay.classList.add('is-open');
+
+        drawer.setAttribute(
+            'aria-hidden',
+            'false'
+        );
+
+        toggle.setAttribute(
+            'aria-expanded',
+            'true'
+        );
+
+        document.body.classList.add(
+            'org-menu-open'
+        );
+
+    };
+
+
+    const closeMenu = () => {
+
+        drawer.classList.remove(
+            'is-open'
+        );
+
+        overlay.classList.remove(
+            'is-open'
+        );
+
+        drawer.setAttribute(
+            'aria-hidden',
+            'true'
+        );
+
+        toggle.setAttribute(
+            'aria-expanded',
+            'false'
+        );
+
+        document.body.classList.remove(
+            'org-menu-open'
+        );
+
+    };
+
+
+    toggle.addEventListener(
+        'click',
+        openMenu
+    );
+
+
+    overlay.addEventListener(
+        'click',
+        closeMenu
+    );
+
+
+    closeButton.addEventListener(
+        'click',
+        closeMenu
+    );
+
+
+    drawer
+        .querySelectorAll('a')
+        .forEach(
+            link =>
+                link.addEventListener(
+                    'click',
+                    closeMenu
+                )
+        );
+
+
+    document.addEventListener(
+        'keydown',
+        event => {
+
+            if (
+                event.key === 'Escape' &&
+                drawer.classList.contains(
+                    'is-open'
+                )
+            ) {
+                closeMenu();
+            }
+
+        }
+    );
+
+
+    window.addEventListener(
+        'resize',
+        () => {
+
+            if (
+                window.innerWidth > 1050 &&
+                drawer.classList.contains(
+                    'is-open'
+                )
+            ) {
+                closeMenu();
+            }
+
+        }
+    );
+
 })();
-</script>
+</script> 

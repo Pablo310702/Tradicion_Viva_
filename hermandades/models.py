@@ -9,7 +9,7 @@ from django.db import models
 import uuid
 from django.urls import reverse
 
-from .validators import validate_audio_size, validate_image_size
+from .validators import validate_audio_size, validate_image_size, validate_video_size 
 
 
 class Hermandad(models.Model):
@@ -35,7 +35,7 @@ class Hermandad(models.Model):
     mision = models.TextField(blank=True)
     vision = models.TextField(blank=True)
     informacion_templo = models.TextField(blank=True)
-
+    imagen_templo = models.ImageField(upload_to='templos/', blank=True, null=True, verbose_name='Imagen del templo')
     color_primario = models.CharField(max_length=20, default="#111111")
     color_acento = models.CharField(max_length=20, default="#b08d57")
 
@@ -371,40 +371,146 @@ class VideoHermandad(models.Model):
         on_delete=models.CASCADE,
         related_name="videos",
     )
-    titulo = models.CharField(max_length=180)
-    descripcion = models.TextField(blank=True)
-    url = models.URLField(help_text="Enlace de YouTube o Vimeo.")
-    orden = models.PositiveIntegerField(default=0)
-    activo = models.BooleanField(default=True)
+
+    titulo = models.CharField(
+        max_length=180
+    )
+
+    descripcion = models.TextField(
+        blank=True
+    )
+
+    video = models.FileField(
+        upload_to="videos/",
+        blank=True,
+        null=True,
+        validators=[
+            validate_video_size,
+            FileExtensionValidator(
+                ["mp4", "webm", "mov", "m4v"]
+            ),
+        ],
+        verbose_name="archivo de video",
+        help_text=(
+            "Puedes subir un video directamente. "
+            "Formatos permitidos: MP4, WEBM, MOV y M4V."
+        ),
+    )
+
+    url = models.URLField(
+        blank=True,
+        help_text=(
+            "Opcional. Enlace de YouTube o Vimeo. "
+            "Utilízalo si no vas a subir un archivo de video."
+        ),
+    )
+
+    orden = models.PositiveIntegerField(
+        default=0
+    )
+
+    activo = models.BooleanField(
+        default=True
+    )
 
     class Meta:
         ordering = ["orden", "titulo"]
         verbose_name = "video institucional"
         verbose_name_plural = "videos institucionales"
-        indexes = [models.Index(fields=["hermandad", "activo", "orden"], name="video_org_act_orden")]
+        indexes = [
+            models.Index(
+                fields=[
+                    "hermandad",
+                    "activo",
+                    "orden",
+                ],
+                name="video_org_act_orden",
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+
+        if not self.video and not self.url:
+            raise ValidationError(
+                "Debes subir un archivo de video o indicar un enlace de YouTube/Vimeo."
+            )
 
     @property
     def embed_url(self):
+        if not self.url:
+            return ""
+
         parsed = urlparse(self.url)
-        host = parsed.netloc.lower().removeprefix("www.")
+
+        host = (
+            parsed.netloc
+            .lower()
+            .removeprefix("www.")
+        )
+
         if host == "youtu.be":
-            video_id = parsed.path.strip("/").split("/")[0]
-            return f"https://www.youtube-nocookie.com/embed/{video_id}" if video_id else ""
-        if host in {"youtube.com", "m.youtube.com"}:
+            video_id = (
+                parsed.path
+                .strip("/")
+                .split("/")[0]
+            )
+
+            return (
+                f"https://www.youtube-nocookie.com/embed/{video_id}"
+                if video_id
+                else ""
+            )
+
+        if host in {
+            "youtube.com",
+            "m.youtube.com",
+        }:
+
             if parsed.path == "/watch":
-                video_id = parse_qs(parsed.query).get("v", [""])[0]
-            elif parsed.path.startswith("/embed/") or parsed.path.startswith("/shorts/"):
-                video_id = parsed.path.strip("/").split("/")[-1]
+                video_id = parse_qs(
+                    parsed.query
+                ).get("v", [""])[0]
+
+            elif (
+                parsed.path.startswith("/embed/")
+                or parsed.path.startswith("/shorts/")
+            ):
+                video_id = (
+                    parsed.path
+                    .strip("/")
+                    .split("/")[-1]
+                )
+
             else:
                 video_id = ""
-            return f"https://www.youtube-nocookie.com/embed/{video_id}" if video_id else ""
+
+            return (
+                f"https://www.youtube-nocookie.com/embed/{video_id}"
+                if video_id
+                else ""
+            )
+
         if host == "vimeo.com":
-            video_id = parsed.path.strip("/").split("/")[0]
-            return f"https://player.vimeo.com/video/{video_id}" if video_id.isdigit() else ""
+            video_id = (
+                parsed.path
+                .strip("/")
+                .split("/")[0]
+            )
+
+            return (
+                f"https://player.vimeo.com/video/{video_id}"
+                if video_id.isdigit()
+                else ""
+            )
+
         return ""
 
     def __str__(self):
-        return f"{self.hermandad.nombre} - {self.titulo}"
+        return (
+            f"{self.hermandad.nombre} - "
+            f"{self.titulo}"
+        )
 
 
 class MarchaProcesional(models.Model):

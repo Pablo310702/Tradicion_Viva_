@@ -1,3 +1,4 @@
+import json
 from datetime import date
 from decimal import Decimal
 
@@ -5,6 +6,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from hermandades.models import CuentaDevoto, Devoto
+from hermandades.guatemala_ubicaciones import DEPARTAMENTO_CHOICES, MUNICIPIOS_POR_DEPARTAMENTO
 
 
 class DevotoForm(forms.ModelForm):
@@ -23,6 +25,29 @@ class DevotoForm(forms.ModelForm):
         widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
     )
     website = forms.CharField(required=False, widget=forms.HiddenInput)
+
+    departamento = forms.ChoiceField(
+        label="Departamento",
+        choices=DEPARTAMENTO_CHOICES,
+        required=True,
+        widget=forms.Select(
+            attrs={
+                "autocomplete": "address-level1",
+                "aria-controls": "id_municipio",
+            }
+        ),
+    )
+
+    municipio = forms.ChoiceField(
+        label="Municipio",
+        choices=[("", "Seleccione primero un departamento")],
+        required=True,
+        widget=forms.Select(
+            attrs={
+                "autocomplete": "address-level2",
+            }
+        ),
+    )
 
     class Meta:
         model = Devoto
@@ -56,6 +81,40 @@ class DevotoForm(forms.ModelForm):
         self.hermandad = hermandad
         self._cuenta_existente = None
         super().__init__(*args, **kwargs)
+
+        # Lista completa Departamento -> Municipios para el selector dependiente.
+        self.fields["departamento"].widget.attrs["data-municipios"] = json.dumps(
+            MUNICIPIOS_POR_DEPARTAMENTO,
+            ensure_ascii=False,
+        )
+
+        # Cuando el formulario se envía con errores o se edita un registro,
+        # carga únicamente los municipios correspondientes al departamento.
+        departamento_actual = ""
+        if self.is_bound:
+            departamento_actual = (
+                self.data.get(self.add_prefix("departamento"), "") or ""
+            ).strip()
+        elif self.instance and self.instance.pk:
+            departamento_actual = (self.instance.departamento or "").strip()
+        else:
+            departamento_actual = (self.initial.get("departamento", "") or "").strip()
+
+        municipios_disponibles = MUNICIPIOS_POR_DEPARTAMENTO.get(
+            departamento_actual,
+            [],
+        )
+
+        if municipios_disponibles:
+            self.fields["municipio"].choices = [
+                ("", "Seleccione un municipio"),
+                *[(municipio, municipio) for municipio in municipios_disponibles],
+            ]
+        else:
+            self.fields["municipio"].choices = [
+                ("", "Seleccione primero un departamento")
+            ]
+
         self.fields["acepta_privacidad"].required = True
         self.fields["acepta_privacidad"].label = (
             "Acepto que estos datos sean almacenados y administrados por la organización seleccionada."
@@ -88,8 +147,6 @@ class DevotoForm(forms.ModelForm):
             "dia": "DD",
             "mes": "MM",
             "anio": "AAAA",
-            "departamento": "Departamento",
-            "municipio": "Municipio",
             "celular": "+502 5555 5555",
             "correo": "Correo",
             "correo2": "Confirmar correo",
@@ -140,6 +197,16 @@ class DevotoForm(forms.ModelForm):
         cleaned = super().clean()
         if cleaned.get("website"):
             raise ValidationError("No fue posible procesar el formulario.")
+
+        departamento = cleaned.get("departamento")
+        municipio = cleaned.get("municipio")
+        if departamento and municipio:
+            municipios_validos = MUNICIPIOS_POR_DEPARTAMENTO.get(departamento, [])
+            if municipio not in municipios_validos:
+                self.add_error(
+                    "municipio",
+                    "El municipio seleccionado no corresponde al departamento indicado.",
+                )
 
         correo = cleaned.get("correo")
         correo2 = cleaned.get("correo2", "").strip().lower()
@@ -260,3 +327,4 @@ class RestablecerPasswordDevotoForm(forms.Form):
         if cleaned.get("password1") and cleaned.get("password2") and cleaned["password1"] != cleaned["password2"]:
             self.add_error("password2", "Las contraseñas no coinciden.")
         return cleaned
+ 

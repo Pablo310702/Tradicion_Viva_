@@ -396,24 +396,60 @@ def seccion_generica(request, slug, seccion):
     return render(request, "web/seccion.html", contexto)
 
 
+def qr_devoto(request, codigo):
+    """
+    Punto público del código QR del comprobante.
+
+    El QR utiliza comprobante_codigo (UUID) y no expone el DPI en la URL.
+    Al escanearlo desde un dispositivo normal, redirige a la página pública
+    de la hermandad o cofradía correspondiente.
+
+    Más adelante, el lector administrativo puede reutilizar este mismo UUID
+    para localizar el registro y confirmar la entrega del turno.
+    """
+    devoto = get_object_or_404(
+        Devoto.objects.select_related("hermandad"),
+        comprobante_codigo=codigo,
+    )
+
+    return redirect(
+        "web:hermandad_detalle",
+        slug=devoto.hermandad.slug,
+    )
+
+
 def comprobante_devoto(request, slug, codigo):
     devoto = get_object_or_404(
         Devoto.objects.select_related("hermandad"),
         hermandad__slug=slug,
         comprobante_codigo=codigo,
     )
+
     response = HttpResponse(content_type="application/pdf")
     response["Content-Disposition"] = (
         f'attachment; filename="comprobante_devoto_{devoto.id}_{devoto.hermandad.slug}.pdf"'
     )
     response["Cache-Control"] = "private, no-store"
-    qr_url = request.build_absolute_uri(
-        reverse(
-            "web:comprobante_devoto",
-            kwargs={"slug": devoto.hermandad.slug, "codigo": devoto.comprobante_codigo},
-        )
+
+    # El QR no contiene el DPI. Apunta directamente a la página pública
+    # de la hermandad/cofradía y conserva el UUID seguro del comprobante
+    # en el parámetro "registro". Esto evita depender de una ruta adicional
+    # llamada "qr_devoto" y deja el código preparado para el futuro lector QR
+    # administrativo.
+    destino_publico = reverse(
+        "web:hermandad_detalle",
+        kwargs={"slug": devoto.hermandad.slug},
     )
-    generar_comprobante_devoto(response, devoto, qr_url)
+    qr_url = request.build_absolute_uri(
+        f"{destino_publico}?registro={devoto.comprobante_codigo}"
+    )
+
+    generar_comprobante_devoto(
+        response,
+        devoto,
+        qr_url,
+    )
+
     return response
 
 
