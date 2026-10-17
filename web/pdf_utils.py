@@ -461,8 +461,8 @@ def generar_comprobante_devoto(stream, devoto, qr_url):
         pdf,
         (
             "El código QR está asociado de forma única a este registro. "
-            "Al escanearlo desde un dispositivo público, abrirá la página "
-            "de la hermandad o cofradía correspondiente."
+            "El personal autorizado puede escanearlo con su sesión iniciada "
+            "para consultar y confirmar la entrega de tus turnos."
         ),
         left + 14 * mm,
         y - 9 * mm,

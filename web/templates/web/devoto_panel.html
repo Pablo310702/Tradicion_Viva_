@@ -65,7 +65,7 @@
     position:relative;
     z-index:1;
     margin:0 0 12px;
-    color:var(--brand-cream);
+    color:#171717;
     font-family:"Times New Roman", Times, serif;
   }
 
@@ -218,6 +218,19 @@
     background:#151019;
   }
 
+  .estado-entrega,
+  .estado-pendiente{
+    display:inline-block;
+    margin-left:6px;
+    padding:3px 8px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:800;
+  }
+
+  .estado-entrega{ background:#dff3e4; color:#18542c; }
+  .estado-pendiente{ background:#fff0d7; color:#6d4300; }
+
   .comm-prefs{
     margin-top:18px;
     padding:17px;
@@ -308,6 +321,23 @@
         {% endif %}
       </div>
 
+      {% if devoto.turnos_inscritos.all %}
+        <div class="comm-prefs">
+          <h3>Mis turnos</h3>
+          {% for inscripcion in devoto.turnos_inscritos.all %}
+            <p>
+              <strong>Turno {{ inscripcion.turno.numero }} · {{ inscripcion.turno.nombre_turno }}</strong>
+              — {{ inscripcion.turno.pieza }}
+              {% if inscripcion.entregado %}
+                <span class="estado-entrega">Entregado el {{ inscripcion.entregado_en|date:"d/m/Y H:i" }}</span>
+              {% else %}
+                <span class="estado-pendiente">Pendiente de entrega</span>
+              {% endif %}
+            </p>
+          {% endfor %}
+        </div>
+      {% endif %}
+
       <div class="record-actions">
         <a href="{% url 'web:comprobante_devoto' devoto.hermandad.slug devoto.comprobante_codigo %}">Descargar comprobante</a>
       </div>
@@ -319,7 +349,6 @@
 
         <div class="comm-options">
           <label><input type="checkbox" name="acepta_email" {% if devoto.acepta_email %}checked{% endif %}> Correo</label>
-          <label><input type="checkbox" name="acepta_sms" {% if devoto.acepta_sms %}checked{% endif %}> SMS</label>
           <label><input type="checkbox" name="acepta_whatsapp" {% if devoto.acepta_whatsapp %}checked{% endif %}> WhatsApp</label>
         </div>
 

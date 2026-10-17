@@ -28,6 +28,22 @@ urlpatterns = [
     ),
     path("hermandad/<slug:slug>/", views.hermandad_detalle, name="hermandad_detalle"),
     path("hermandad/<slug:slug>/devoto/comprobante/<uuid:codigo>/", views.comprobante_devoto, name="comprobante_devoto"),
+    path("devoto/qr/<uuid:codigo>/", views.qr_devoto, name="qr_devoto"),
+    path(
+        "hermandad/<slug:slug>/inscripciones-turnos/",
+        views.inscripciones_turnos,
+        name="inscripciones_turnos",
+    ),
+    path(
+        "hermandad/<slug:slug>/inscripciones-turnos/entregar/<int:inscripcion_id>/",
+        views.entregar_turno,
+        name="entregar_turno",
+    ),
+    path(
+        "hermandad/<slug:slug>/inscripciones-turnos/limpiar-entrega/<int:inscripcion_id>/",
+        views.limpiar_entrega_turno,
+        name="limpiar_entrega_turno",
+    ),
 
     # Editor canónico para TODAS las hermandades/cofradías, incluidas las nuevas.
     # Estas rutas deben ir antes de la sección genérica para que "editor-turnos"

@@ -441,20 +441,6 @@
                 Registro
             </a>
 
-            {% if request.session.cuenta_devoto_id %}
-
-                <a href="{% url 'web:devoto_panel' %}">
-                    Mi cuenta
-                </a>
-
-            {% else %}
-
-                <a href="{% url 'web:devoto_login' %}">
-                    Iniciar sesión
-                </a>
-
-            {% endif %}
-
         </div>
 
     </div>
@@ -605,20 +591,6 @@
                     Registro
                 </a>
 
-
-                {% if request.session.cuenta_devoto_id %}
-
-                    <a href="{% url 'web:devoto_panel' %}">
-                        Mi cuenta
-                    </a>
-
-                {% else %}
-
-                    <a href="{% url 'web:devoto_login' %}">
-                        Iniciar sesión
-                    </a>
-
-                {% endif %}
 
             </div>
 

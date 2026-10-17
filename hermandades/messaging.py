@@ -124,6 +124,29 @@ def send_email(to: str, subject: str, body: str, connection=None) -> ProviderRes
     return ProviderResult(provider="smtp", status="sent")
 
 
+def send_registration_receipt_email(
+    to: str,
+    organization_name: str,
+    pdf_bytes: bytes,
+    filename: str,
+) -> ProviderResult:
+    if not to:
+        raise MessagingProviderError("El destinatario no tiene correo electrónico.")
+    message = EmailMessage(
+        subject="Comprobante de registro - TRADICIÓN VIVA",
+        body=(
+            "Gracias por completar tu registro en TRADICIÓN VIVA. "
+            f"Adjuntamos el comprobante de tu inscripción en {organization_name}."
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[to],
+    )
+    message.attach(filename, pdf_bytes, "application/pdf")
+    if message.send(fail_silently=False) != 1:
+        raise MessagingProviderError("El servidor SMTP no confirmó el envío del comprobante.")
+    return ProviderResult(provider="smtp", status="sent")
+
+
 def _twilio_auth() -> tuple[str, str]:
     account_sid = (settings.TWILIO_ACCOUNT_SID or "").strip()
     if not account_sid:
@@ -296,6 +319,86 @@ def send_whatsapp_meta(
             raise MessagingProviderError(_request_error(response))
         data = response.json()
         messages = data.get("messages") or []
+        message_id = str(messages[0].get("id", "")) if messages else ""
+        return ProviderResult(provider="meta-whatsapp", message_id=message_id, status="accepted")
+    finally:
+        if own_session:
+            session.close()
+
+
+def send_whatsapp_document_template(
+    to: str,
+    pdf_bytes: bytes,
+    filename: str,
+    *,
+    session: requests.Session | None = None,
+) -> ProviderResult:
+    """Carga un comprobante privado y lo envía como encabezado de plantilla Utility."""
+    token = (settings.WHATSAPP_ACCESS_TOKEN or "").strip()
+    phone_number_id = (settings.WHATSAPP_PHONE_NUMBER_ID or "").strip()
+    template_name = (settings.WHATSAPP_RECEIPT_TEMPLATE_NAME or "").strip()
+    template_language = (settings.WHATSAPP_RECEIPT_TEMPLATE_LANGUAGE or "es").strip()
+    if not token:
+        raise MessagingConfigurationError("Falta WHATSAPP_ACCESS_TOKEN en el archivo .env.")
+    if not phone_number_id:
+        raise MessagingConfigurationError("Falta WHATSAPP_PHONE_NUMBER_ID en el archivo .env.")
+    if not template_name:
+        raise MessagingConfigurationError(
+            "Configura WHATSAPP_RECEIPT_TEMPLATE_NAME con una plantilla Utility aprobada "
+            "que tenga encabezado de documento."
+        )
+
+    digits = "".join(ch for ch in to if ch.isdigit())
+    version = (settings.WHATSAPP_GRAPH_API_VERSION or "v25.0").strip()
+    headers = {"Authorization": f"Bearer {token}"}
+    own_session = session is None
+    session = session or requests.Session()
+    try:
+        media_url = f"https://graph.facebook.com/{version}/{phone_number_id}/media"
+        media_response = _post_with_retries(
+            session,
+            media_url,
+            data={"messaging_product": "whatsapp"},
+            files={"file": (filename, pdf_bytes, "application/pdf")},
+            headers=headers,
+        )
+        if not media_response.ok:
+            raise MessagingProviderError(_request_error(media_response))
+        media_id = str(media_response.json().get("id", ""))
+        if not media_id:
+            raise MessagingProviderError("Meta no devolvió el identificador del comprobante cargado.")
+
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": digits,
+            "type": "template",
+            "template": {
+                "name": template_name,
+                "language": {"code": template_language},
+                "components": [
+                    {
+                        "type": "header",
+                        "parameters": [
+                            {
+                                "type": "document",
+                                "document": {"id": media_id, "filename": filename},
+                            }
+                        ],
+                    }
+                ],
+            },
+        }
+        messages_url = f"https://graph.facebook.com/{version}/{phone_number_id}/messages"
+        response = _post_with_retries(
+            session,
+            messages_url,
+            json=payload,
+            headers={**headers, "Content-Type": "application/json"},
+        )
+        if not response.ok:
+            raise MessagingProviderError(_request_error(response))
+        messages = response.json().get("messages") or []
         message_id = str(messages[0].get("id", "")) if messages else ""
         return ProviderResult(provider="meta-whatsapp", message_id=message_id, status="accepted")
     finally:

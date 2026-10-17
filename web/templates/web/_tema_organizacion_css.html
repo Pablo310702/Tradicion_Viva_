@@ -5,28 +5,29 @@
 :root{
   --theme-page:#fff8fb;
   --theme-surface:#ffffff;
-  --theme-surface-2:#f9e8ef;
+  --theme-surface-2:#fdf0f5;
 
-  /* Rosa pastel más suave */
-  --theme-header:#f0cfdb;
-  --theme-topbar:#c86f91;
+  /* Rosa más intenso y ordenado */
+  --theme-header:#f5dbe7;
+  --theme-header-text:#111111;
+  --theme-topbar:#b93f66;
 
-  --theme-text:#111111;
+  --theme-text:#1a1a1a;
   --theme-muted:#2f2f2f;
-  --theme-border:#d88aa7;
+  --theme-border:#d95987;
 
-  --theme-accent:#d88aa7;
-  --theme-accent-strong:#bd6386;
+  --theme-accent:#e6638d;
+  --theme-accent-strong:#b8325e;
 
-  --theme-button:#e6afc3;
-  --theme-button-hover:#d990aa;
+  --theme-button:#ef9ab4;
+  --theme-button-hover:#df5f8b;
   --theme-button-text:#111111;
 
-  --theme-dropdown:#efc5d4;
-  --theme-dropdown-hover:#e5aabe;
+  --theme-dropdown:#f7d7e4;
+  --theme-dropdown-hover:#ebafc7;
   --theme-dropdown-text:#111111;
 
-  --theme-shadow:rgba(126,55,82,.16);
+  --theme-shadow:rgba(125,35,66,.18);
 }
 </style>
 
@@ -96,6 +97,7 @@
   --theme-surface-2:#fbf4df;
 
   --theme-header:#ffffff;
+  --theme-header-text:#111111;
   --theme-topbar:#c9a33d;
 
   --theme-text:#111111;
@@ -149,30 +151,34 @@
 {% else %}
 <style>
 :root{
-  --theme-page:#0f0f0f;
-  --theme-surface:#151515;
-  --theme-surface-2:#1d1d1d;
+  /* Tema configurable desde los campos color_primario y color_acento. */
+  --theme-page:{{ h.color_primario|default:'#0f0f0f' }};
+  --theme-surface:color-mix(in srgb, {{ h.color_primario|default:'#0f0f0f' }} 92%, white);
+  --theme-surface-2:color-mix(in srgb, {{ h.color_primario|default:'#0f0f0f' }} 82%, white);
 
-  --theme-header:#080808;
-  --theme-topbar:#d4af37;
+  /* Encabezado y pie usan exactamente el acento turquesa elegido. */
+  --theme-header:{{ h.color_acento|default:'#d4af37' }};
+  --theme-topbar:{{ h.color_acento|default:'#d4af37' }};
 
-  --theme-text:#ffffff;
-  --theme-muted:#c9c9c9;
-  --theme-border:#444444;
+  --theme-header-text:{{ h.color_acento_texto }};
+  --theme-text:{{ h.color_primario_texto }};
+  --theme-muted:{{ h.color_primario_texto }};
+  --theme-border:color-mix(in srgb, {{ h.color_acento|default:'#444444' }} 42%, white);
 
-  --theme-accent:#d4af37;
-  --theme-accent-strong:#b08d57;
+  --theme-accent:{{ h.color_acento|default:'#d4af37' }};
+  --theme-accent-strong:color-mix(in srgb, {{ h.color_acento|default:'#b08d57' }} 72%, white);
 
-  --theme-button:#d4af37;
-  --theme-button-hover:#e4c65c;
-  --theme-button-text:#111111;
+  --theme-button:{{ h.color_acento|default:'#d4af37' }};
+  --theme-button-hover:color-mix(in srgb, {{ h.color_acento|default:'#e4c65c' }} 48%, white);
+  --theme-button-text:{{ h.color_acento_texto }};
 
-  --theme-dropdown:#242424;
-  --theme-dropdown-hover:#333333;
-  --theme-dropdown-text:#ffffff;
+  --theme-dropdown:color-mix(in srgb, {{ h.color_acento|default:'#d4af37' }} 22%, white);
+  --theme-dropdown-hover:color-mix(in srgb, {{ h.color_acento|default:'#d4af37' }} 34%, white);
+  --theme-dropdown-text:var(--theme-text);
 
   --theme-shadow:rgba(0,0,0,.28);
 }
+
 </style>
 {% endif %}
 
@@ -210,6 +216,8 @@ header,
 body > header{
   background:var(--theme-header)!important;
   background-color:var(--theme-header)!important;
+  background-image:none!important;
+  opacity:1!important;
   border-color:var(--theme-border)!important;
 }
 
@@ -222,7 +230,25 @@ header .brand,
 .org-header *,
 .brand-header *,
 .brand-bar *{
-  color:var(--theme-text)!important;
+  color:var(--theme-header-text, var(--theme-text))!important;
+}
+
+/* Encabezado y pie negros; el texto siempre conserva contraste. */
+footer,
+.site-footer,
+.footer{
+  background:var(--theme-header)!important;
+  background-color:var(--theme-header)!important;
+  background-image:none!important;
+  color:var(--theme-header-text, #ffffff)!important;
+  opacity:1!important;
+  border-color:var(--theme-border)!important;
+}
+
+footer * ,
+.site-footer * ,
+.footer *{
+  color:var(--theme-header-text, #ffffff)!important;
 }
 
 /* ---------- BOTONES DE NAVEGACIÓN ---------- */
@@ -582,6 +608,40 @@ details > summary,
   color:#111111!important;
 }
 {% endif %}
+
+/* Contraste común para recorrido y seguimiento. */
+header a,
+header span,
+header strong,
+header .brand,
+header .theme-brand,
+header .theme-brand * {
+  color:var(--theme-header-text, #ffffff)!important;
+  opacity:1!important;
+}
+
+.hero h1,
+.hero p,
+.hero-box p,
+.info-card,
+.info-card h2,
+.info-card h3,
+.info-card .dato,
+.info-card .dato span,
+.turno-actual,
+.turno-actual h3,
+.turno-actual .dato,
+.turno-actual .dato span,
+.route-direction-legend {
+  color:var(--theme-text)!important;
+  opacity:1!important;
+}
+
+.info-card strong,
+.turno-actual strong {
+  color:var(--theme-accent-strong)!important;
+  opacity:1!important;
+}
 
 </style>
 

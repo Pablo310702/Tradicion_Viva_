@@ -93,7 +93,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "hermandades" / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -151,6 +151,7 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+media_storage_backend = os.environ.get("MEDIA_STORAGE_BACKEND", "filesystem").strip().lower()
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
@@ -163,6 +164,27 @@ STORAGES = {
         ),
     },
 }
+if media_storage_backend == "s3":
+    media_bucket = os.environ.get("AWS_STORAGE_BUCKET_NAME", "").strip()
+    if not media_bucket:
+        raise ImproperlyConfigured("Falta AWS_STORAGE_BUCKET_NAME para usar almacenamiento S3.")
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": media_bucket,
+            "region_name": os.environ.get("AWS_S3_REGION_NAME", "").strip() or None,
+            "endpoint_url": os.environ.get("AWS_S3_ENDPOINT_URL", "").strip() or None,
+            "custom_domain": os.environ.get("AWS_S3_CUSTOM_DOMAIN", "").strip() or None,
+            "access_key": os.environ.get("AWS_ACCESS_KEY_ID", "").strip() or None,
+            "secret_key": os.environ.get("AWS_SECRET_ACCESS_KEY", "").strip() or None,
+            "default_acl": None,
+            "file_overwrite": False,
+            "querystring_auth": env_bool("AWS_QUERYSTRING_AUTH", default=True),
+            "querystring_expire": int(os.environ.get("AWS_QUERYSTRING_EXPIRE", "3600")),
+        },
+    }
+elif media_storage_backend != "filesystem":
+    raise ImproperlyConfigured("MEDIA_STORAGE_BACKEND debe ser 'filesystem' o 's3'.")
 WHITENOISE_USE_FINDERS = DEBUG
 WHITENOISE_MAX_AGE = 31536000 if not DEBUG else 0
 
@@ -170,8 +192,27 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+MAX_IMAGE_UPLOAD_MB = int(os.environ.get("MAX_IMAGE_UPLOAD_MB", "20"))
+MAX_VIDEO_UPLOAD_MB = int(os.environ.get("MAX_VIDEO_UPLOAD_MB", "250"))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+REDIS_URL = os.environ.get("REDIS_URL", "").strip()
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "tradicion-viva-local",
+        }
+    }
 
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 if render_hostname:
@@ -232,6 +273,8 @@ WHATSAPP_ACCESS_TOKEN = os.environ.get("WHATSAPP_ACCESS_TOKEN", "")
 WHATSAPP_PHONE_NUMBER_ID = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "")
 WHATSAPP_DEFAULT_TEMPLATE_NAME = os.environ.get("WHATSAPP_DEFAULT_TEMPLATE_NAME", "tradicion_viva_comunicado")
 WHATSAPP_DEFAULT_TEMPLATE_LANGUAGE = os.environ.get("WHATSAPP_DEFAULT_TEMPLATE_LANGUAGE", "es")
+WHATSAPP_RECEIPT_TEMPLATE_NAME = os.environ.get("WHATSAPP_RECEIPT_TEMPLATE_NAME", "")
+WHATSAPP_RECEIPT_TEMPLATE_LANGUAGE = os.environ.get("WHATSAPP_RECEIPT_TEMPLATE_LANGUAGE", "es")
 WHATSAPP_VERIFY_TOKEN = os.environ.get("WHATSAPP_VERIFY_TOKEN", "")
 WHATSAPP_APP_SECRET = os.environ.get("WHATSAPP_APP_SECRET", "")
 
@@ -239,6 +282,8 @@ WHATSAPP_APP_SECRET = os.environ.get("WHATSAPP_APP_SECRET", "")
 TRACCAR_BASE_URL = os.environ.get("TRACCAR_BASE_URL", "https://demo.traccar.org").rstrip("/")
 TRACCAR_USERNAME = os.environ.get("TRACCAR_USERNAME", "")
 TRACCAR_PASSWORD = os.environ.get("TRACCAR_PASSWORD", "")
+GPS_API_RATE_LIMIT_PER_MINUTE = int(os.environ.get("GPS_API_RATE_LIMIT_PER_MINUTE", "60"))
+GPS_MAX_POSITION_AGE_MINUTES = int(os.environ.get("GPS_MAX_POSITION_AGE_MINUTES", "5"))
 
 LOGGING = {
     "version": 1,

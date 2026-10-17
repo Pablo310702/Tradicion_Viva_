@@ -28,8 +28,12 @@ class OrganizationContextMiddleware:
         organization_id = ""
         account_id = ""
 
+        # La cuenta de devoto usa una sesiÃ³n propia y no convierte al usuario
+        # en un django.contrib.auth User. Por eso este contexto debe cargarse
+        # independientemente de request.user.is_authenticated.
+        account_id = str(request.session.get("cuenta_devoto_id", ""))
+
         if request.user.is_authenticated:
-            account_id = str(request.session.get("cuenta_devoto_id", ""))
             if request.user.is_superuser:
                 organization_id = "*"
             elif request.user.is_staff:

@@ -127,6 +127,23 @@ WHATSAPP_ACCESS_TOKEN=TU_ACCESS_TOKEN
 WHATSAPP_PHONE_NUMBER_ID=TU_PHONE_NUMBER_ID
 WHATSAPP_DEFAULT_TEMPLATE_NAME=tradicion_viva_comunicado
 WHATSAPP_DEFAULT_TEMPLATE_LANGUAGE=es
+WHATSAPP_RECEIPT_TEMPLATE_NAME=comprobante_registro
+WHATSAPP_RECEIPT_TEMPLATE_LANGUAGE=es
+```
+
+Al registrarse, el sistema envía el comprobante PDF por los canales Correo y/o WhatsApp que la persona haya autorizado. Para WhatsApp, crea y consigue aprobación para una plantilla de categoría **Utility** con encabezado **Documento**. El cuerpo debe ser estático, por ejemplo: "Adjuntamos tu comprobante de registro. Gracias por formar parte de TRADICIÓN VIVA." Configura su nombre e idioma en las dos variables `WHATSAPP_RECEIPT_TEMPLATE_*` anteriores. Meta puede requerir que la plantilla respete sus reglas vigentes y el consentimiento explícito del destinatario.
+
+Para entregar correo real (en lugar de la consola de desarrollo), configura SMTP en `.env`:
+
+```env
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.tu-proveedor.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=tu-usuario
+EMAIL_HOST_PASSWORD=tu-clave
+EMAIL_USE_TLS=True
+EMAIL_USE_SSL=False
+DEFAULT_FROM_EMAIL=TRADICIÓN VIVA <correo@tu-dominio.com>
 ```
 
 ### Plantilla recomendada

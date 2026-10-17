@@ -83,6 +83,28 @@ def main() -> None:
         ),
     }
 
+    print("\n--- Correo electrónico SMTP ---")
+    if yes_no("¿Deseas configurar el envío real de correo?", default=True):
+        updates.update(
+            {
+                "EMAIL_BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+                "EMAIL_HOST": prompt("Servidor SMTP", current.get("EMAIL_HOST", "")),
+                "EMAIL_PORT": prompt("Puerto SMTP", current.get("EMAIL_PORT", "587")),
+                "EMAIL_HOST_USER": prompt("Usuario SMTP", current.get("EMAIL_HOST_USER", "")),
+                "EMAIL_HOST_PASSWORD": prompt(
+                    "Contraseña o clave de aplicación SMTP",
+                    current.get("EMAIL_HOST_PASSWORD", ""),
+                    secret=True,
+                ),
+                "EMAIL_USE_TLS": prompt("Usar STARTTLS (True/False)", current.get("EMAIL_USE_TLS", "True")),
+                "EMAIL_USE_SSL": prompt("Usar SSL (True/False)", current.get("EMAIL_USE_SSL", "False")),
+                "DEFAULT_FROM_EMAIL": prompt(
+                    "Correo remitente verificado",
+                    current.get("DEFAULT_FROM_EMAIL", "TRADICIÓN VIVA <no-reply@tradicionviva.local>"),
+                ),
+            }
+        )
+
     print("\n--- SMS con Twilio ---")
     if yes_no("¿Deseas configurar SMS con Twilio?", default=True):
         updates.update(
@@ -122,6 +144,14 @@ def main() -> None:
                 ),
                 "WHATSAPP_DEFAULT_TEMPLATE_LANGUAGE": prompt(
                     "Idioma de plantilla", current.get("WHATSAPP_DEFAULT_TEMPLATE_LANGUAGE", "es")
+                ),
+                "WHATSAPP_RECEIPT_TEMPLATE_NAME": prompt(
+                    "Plantilla Utility aprobada para comprobantes (encabezado Documento)",
+                    current.get("WHATSAPP_RECEIPT_TEMPLATE_NAME", ""),
+                ),
+                "WHATSAPP_RECEIPT_TEMPLATE_LANGUAGE": prompt(
+                    "Idioma de plantilla para comprobantes",
+                    current.get("WHATSAPP_RECEIPT_TEMPLATE_LANGUAGE", "es"),
                 ),
                 "WHATSAPP_VERIFY_TOKEN": prompt(
                     "Token de verificación para webhook (elige uno privado)",

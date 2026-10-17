@@ -198,6 +198,7 @@ class HermandadAdmin(admin.ModelAdmin):
         "gps_activo",
         "traccar_device_id",
         "editor_turnos_link",
+        "inscripciones_turnos_link",
     )
 
     list_filter = (
@@ -233,6 +234,7 @@ class HermandadAdmin(admin.ModelAdmin):
                     "templo",
                     "ciudad",
                     "descripcion_corta",
+                    "almacenamiento_cuota_mb",
                     "activa",
                 )
             },
@@ -292,6 +294,8 @@ class HermandadAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "gps_activo",
+                    "gps_publico",
+                    ("gps_publicacion_desde", "gps_publicacion_hasta"),
                     "traccar_device_id",
                     "nombre_dispositivo_gps",
                 ),
@@ -299,6 +303,8 @@ class HermandadAdmin(admin.ModelAdmin):
                 "description": (
                     "Activa el GPS y copia aquí el IDENTIFICADOR que aparece "
                     "en Traccar Client (por ejemplo, 81709810). "
+                    "La publicación es privada por defecto. Para compartirla, activa su publicación "
+                    "y define el inicio y el fin del evento. "
                     "El sistema buscará automáticamente el ID interno del "
                     "dispositivo en Traccar. "
                     "El mismo identificador puede asignarse a varias "
@@ -354,6 +360,20 @@ class HermandadAdmin(admin.ModelAdmin):
 
         return format_html(
             '<a class="button" href="{}">Abrir editor</a>',
+            url,
+        )
+
+    @admin.display(description="Inscripciones y entregas")
+    def inscripciones_turnos_link(self, obj):
+        if not obj or not obj.pk or not obj.slug:
+            return "Guarda primero la organización"
+
+        url = reverse(
+            "web:inscripciones_turnos",
+            kwargs={"slug": obj.slug},
+        )
+        return format_html(
+            '<a class="button" href="{}">Gestionar turnos</a>',
             url,
         )
 
@@ -559,7 +579,6 @@ class DevotoAdmin(OrganizacionAdminMixin, admin.ModelAdmin):
         "correo",
         "celular",
         "acepta_email",
-        "acepta_sms",
         "acepta_whatsapp",
         "creado_en",
     )
@@ -567,7 +586,6 @@ class DevotoAdmin(OrganizacionAdminMixin, admin.ModelAdmin):
     list_filter = (
         "hermandad",
         "acepta_email",
-        "acepta_sms",
         "acepta_whatsapp",
         "departamento",
         "creado_en",
@@ -652,7 +670,6 @@ class DevotoAdmin(OrganizacionAdminMixin, admin.ModelAdmin):
                     "acepta_privacidad",
                     "acepta_comunicaciones",
                     "acepta_email",
-                    "acepta_sms",
                     "acepta_whatsapp",
                 ),
 
@@ -695,7 +712,6 @@ class DevotoAdmin(OrganizacionAdminMixin, admin.ModelAdmin):
         obj.acepta_comunicaciones = any(
             [
                 obj.acepta_email,
-                obj.acepta_sms,
                 obj.acepta_whatsapp,
             ]
         )
@@ -1454,4 +1470,3 @@ class EnvioComunicadoAdmin(admin.ModelAdmin):
         if not organizacion_id:
             return queryset.none()
         return queryset.filter(comunicado__hermandad_id=organizacion_id)
-

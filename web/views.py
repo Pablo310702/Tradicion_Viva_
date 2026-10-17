@@ -1,19 +1,28 @@
 import calendar
+from datetime import timedelta, timezone as datetime_timezone
+import hashlib
+import json
 import logging
+import math
+import re
+from io import BytesIO
 
 import requests
 from django.conf import settings
+from django.core.cache import cache
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import authenticate, get_user_model, login
 from django.core import signing
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.mail import send_mail
-from django.db import transaction
+from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
@@ -24,7 +33,13 @@ from hermandades.models import (
     Devoto,
     EventoAgenda,
     Hermandad,
+    InscripcionTurno,
     TurnoRecorrido,
+)
+from hermandades.messaging import (
+    normalizar_telefono_e164,
+    send_registration_receipt_email,
+    send_whatsapp_document_template,
 )
 
 from .forms import (
@@ -37,6 +52,47 @@ from .forms import (
 from .pdf_utils import generar_comprobante_devoto
 
 logger = logging.getLogger(__name__)
+
+MAX_ROUTE_POINTS = 2500
+GPS_TURN_DEFAULT_RADIUS_METERS = 30
+GPS_TURN_MIN_RADIUS_METERS = 25
+GPS_TURN_MAX_RADIUS_METERS = 60
+GPS_TURN_MAX_ACCURACY_METERS = 100
+
+
+def _parse_route_points(raw_value):
+    try:
+        points = json.loads(raw_value)
+    except (TypeError, json.JSONDecodeError) as error:
+        raise ValueError("El trazado enviado no tiene un formato válido.") from error
+
+    if not isinstance(points, list):
+        raise ValueError("El trazado debe ser una lista de puntos.")
+    if points and not 2 <= len(points) <= MAX_ROUTE_POINTS:
+        raise ValueError(
+            f"Cada trazado debe tener entre 2 y {MAX_ROUTE_POINTS} puntos, o estar vacío."
+        )
+
+    normalized_points = []
+    for point in points:
+        if not isinstance(point, list) or len(point) != 2:
+            raise ValueError("Cada punto debe incluir latitud y longitud.")
+        latitude, longitude = point
+        if (
+            isinstance(latitude, bool)
+            or isinstance(longitude, bool)
+            or not isinstance(latitude, (int, float))
+            or not isinstance(longitude, (int, float))
+            or not math.isfinite(latitude)
+            or not math.isfinite(longitude)
+            or not -90 <= latitude <= 90
+            or not -180 <= longitude <= 180
+        ):
+            raise ValueError("El trazado contiene coordenadas fuera de rango.")
+        normalized_points.append([float(latitude), float(longitude)])
+
+    return normalized_points
+
 
 SECCION_TITULOS = {
     "mision-vision": "Misión y Visión",
@@ -119,6 +175,64 @@ def _validar_acceso_organizacion_staff(request, hermandad):
         )
 
 
+def _color_organizacion(value, default):
+    value = (value or "").strip()
+    if re.fullmatch(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})", value):
+        return value
+    return default
+
+
+def _texto_contraste(color):
+    hexadecimal = color.lstrip("#")
+    if len(hexadecimal) == 3:
+        hexadecimal = "".join(character * 2 for character in hexadecimal)
+    rojo, verde, azul = (
+        int(hexadecimal[index:index + 2], 16) / 255
+        for index in (0, 2, 4)
+    )
+    luminancia = 0.2126 * rojo + 0.7152 * verde + 0.0722 * azul
+    return "#111111" if luminancia > 0.55 else "#ffffff"
+
+
+def _comprobante_qr_url(request, devoto):
+    destino_qr = reverse(
+        "web:qr_devoto",
+        kwargs={"codigo": devoto.comprobante_codigo},
+    )
+    return request.build_absolute_uri(destino_qr)
+
+
+def _comprobante_pdf_bytes(request, devoto):
+    buffer = BytesIO()
+    generar_comprobante_devoto(buffer, devoto, _comprobante_qr_url(request, devoto))
+    return buffer.getvalue()
+
+
+def _enviar_comprobante_registro(request, devoto):
+    if not (devoto.acepta_email or devoto.acepta_whatsapp):
+        return
+
+    pdf_bytes = _comprobante_pdf_bytes(request, devoto)
+    filename = f"comprobante_devoto_{devoto.id}_{devoto.hermandad.slug}.pdf"
+    if devoto.acepta_email:
+        try:
+            send_registration_receipt_email(
+                devoto.correo,
+                devoto.hermandad.nombre,
+                pdf_bytes,
+                filename,
+            )
+        except Exception:
+            logger.exception("No fue posible enviar por correo el comprobante del devoto %s", devoto.pk)
+
+    if devoto.acepta_whatsapp:
+        try:
+            telefono = normalizar_telefono_e164(devoto.celular)
+            send_whatsapp_document_template(telefono, pdf_bytes, filename)
+        except Exception:
+            logger.exception("No fue posible enviar por WhatsApp el comprobante del devoto %s", devoto.pk)
+
+
 def home(request):
     hermandades = Hermandad.objects.filter(activa=True).order_by("nombre")
     return render(request, "web/home.html", {"hermandades": hermandades})
@@ -126,6 +240,10 @@ def home(request):
 
 def iniciar_sesion(request):
     """Selector público entre acceso de devotos y acceso administrativo."""
+    if _cuenta_devoto_actual(request):
+        return redirect("web:devoto_panel")
+    if request.user.is_authenticated and request.user.is_staff:
+        return redirect("admin:index")
     return render(request, "web/iniciar_sesion.html")
 
 
@@ -183,7 +301,9 @@ def devoto_panel(request):
     if not cuenta:
         return redirect(f"{reverse('web:devoto_login')}?next={request.path}")
     inscripciones = list(
-        cuenta.inscripciones.select_related("hermandad").order_by("hermandad__nombre", "-creado_en")
+        cuenta.inscripciones.select_related("hermandad")
+        .prefetch_related("turnos_inscritos__turno")
+        .order_by("hermandad__nombre", "-creado_en")
     )
     nombre = inscripciones[0].nombre_completo if inscripciones else cuenta.correo
     return render(
@@ -201,10 +321,11 @@ def devoto_preferencias_comunicacion(request, devoto_id):
 
     devoto = get_object_or_404(Devoto, pk=devoto_id, cuenta=cuenta)
     devoto.acepta_email = request.POST.get("acepta_email") == "on"
-    devoto.acepta_sms = request.POST.get("acepta_sms") == "on"
+    # SMS ya no es un canal disponible para los registros de devotos.
+    devoto.acepta_sms = False
     devoto.acepta_whatsapp = request.POST.get("acepta_whatsapp") == "on"
     devoto.acepta_comunicaciones = any(
-        [devoto.acepta_email, devoto.acepta_sms, devoto.acepta_whatsapp]
+        [devoto.acepta_email, devoto.acepta_whatsapp]
     )
     devoto.save(
         update_fields=[
@@ -421,6 +542,9 @@ def seccion_generica(request, slug, seccion):
             if form.is_valid():
                 with transaction.atomic():
                     devoto = form.save()
+                request.session.cycle_key()
+                request.session["cuenta_devoto_id"] = devoto.cuenta_id
+                _enviar_comprobante_registro(request, devoto)
                 messages.success(
                     request,
                     "Registro completado. Ya puedes iniciar sesión como devoto con tu correo y contraseña.",
@@ -442,16 +566,20 @@ def qr_devoto(request, codigo):
     Punto público del código QR del comprobante.
 
     El QR utiliza comprobante_codigo (UUID) y no expone el DPI en la URL.
-    Al escanearlo desde un dispositivo normal, redirige a la página pública
-    de la hermandad o cofradía correspondiente.
-
-    Más adelante, el lector administrativo puede reutilizar este mismo UUID
-    para localizar el registro y confirmar la entrega del turno.
+    El personal autorizado puede abrir las inscripciones y confirmar entregas.
+    Los demás visitantes solo llegan a la página pública de la organización.
     """
     devoto = get_object_or_404(
         Devoto.objects.select_related("hermandad"),
         comprobante_codigo=codigo,
     )
+
+    if request.user.is_authenticated and request.user.is_staff:
+        _validar_acceso_organizacion_staff(request, devoto.hermandad)
+        return redirect(
+            f"{reverse('web:inscripciones_turnos', kwargs={'slug': devoto.hermandad.slug})}"
+            f"?codigo={devoto.comprobante_codigo}"
+        )
 
     return redirect(
         "web:hermandad_detalle",
@@ -460,10 +588,15 @@ def qr_devoto(request, codigo):
 
 
 def comprobante_devoto(request, slug, codigo):
+    cuenta = _cuenta_devoto_actual(request)
+    if not cuenta:
+        raise Http404
+
     devoto = get_object_or_404(
         Devoto.objects.select_related("hermandad"),
         hermandad__slug=slug,
         comprobante_codigo=codigo,
+        cuenta=cuenta,
     )
 
     response = HttpResponse(content_type="application/pdf")
@@ -472,24 +605,7 @@ def comprobante_devoto(request, slug, codigo):
     )
     response["Cache-Control"] = "private, no-store"
 
-    # El QR no contiene el DPI. Apunta directamente a la página pública
-    # de la hermandad/cofradía y conserva el UUID seguro del comprobante
-    # en el parámetro "registro". Esto evita depender de una ruta adicional
-    # llamada "qr_devoto" y deja el código preparado para el futuro lector QR
-    # administrativo.
-    destino_publico = reverse(
-        "web:hermandad_detalle",
-        kwargs={"slug": devoto.hermandad.slug},
-    )
-    qr_url = request.build_absolute_uri(
-        f"{destino_publico}?registro={devoto.comprobante_codigo}"
-    )
-
-    generar_comprobante_devoto(
-        response,
-        devoto,
-        qr_url,
-    )
+    generar_comprobante_devoto(response, devoto, _comprobante_qr_url(request, devoto))
 
     return response
 
@@ -498,17 +614,26 @@ def _turnos_context(h):
     turnos = (
         TurnoRecorrido.objects.select_related("hermandad")
         .filter(hermandad=h, activa=True)
-        .order_by("orden_ruta", "numero")
+        .order_by("numero", "orden_ruta")
     )
     turnos_data = []
     ruta_coords = []
     for turno in turnos:
+        nombre_turno = turno.nombre_turno.strip()
+        nombre_repite_numero = nombre_turno.casefold() in {
+            str(turno.numero),
+            f"turno {turno.numero}".casefold(),
+        }
         turnos_data.append(
             {
                 "id": turno.id,
                 "numero": turno.numero,
-                "titulo": f"Turno {turno.numero} · {turno.nombre_turno}",
-                "nombre_turno": turno.nombre_turno,
+                "titulo": (
+                    f"Turno {turno.numero}"
+                    if nombre_repite_numero
+                    else f"Turno {turno.numero} · {nombre_turno}"
+                ),
+                "nombre_turno": nombre_turno,
                 "pieza": turno.pieza,
                 "genero": turno.genero,
                 "compositor": turno.compositor,
@@ -517,6 +642,7 @@ def _turnos_context(h):
                 "latitud": turno.latitud,
                 "longitud": turno.longitud,
                 "orden_ruta": turno.orden_ruta,
+                "alcanzado_en": turno.alcanzado_en.isoformat() if turno.alcanzado_en else None,
             }
         )
         ruta_coords.append([turno.latitud, turno.longitud])
@@ -533,7 +659,236 @@ def seguimiento(request, slug):
             "h": h,
             "turnos_data": turnos_data,
             "ruta_coords": ruta_coords,
+            "ruta_trazado": (h.ruta_trazado or ruta_coords) if turnos_data else [],
+            "turno_cambio_direccion": h.turno_cambio_direccion,
+            "gps_publicable": h.gps_publicable,
         },
+    )
+
+
+@staff_member_required(login_url="web:administrativo_login")
+def inscripciones_turnos(request, slug):
+    hermandad = _hermandad_editor_por_slug(slug)
+    _validar_acceso_organizacion_staff(request, hermandad)
+
+    if request.method == "POST":
+        devoto_id = request.POST.get("devoto_id")
+        devoto = get_object_or_404(Devoto, pk=devoto_id, hermandad=hermandad)
+        turno_ids = list(dict.fromkeys(request.POST.getlist("turno_ids")))
+        turnos = list(
+            TurnoRecorrido.objects.filter(
+                hermandad=hermandad,
+                activa=True,
+                pk__in=turno_ids,
+            )
+        )
+        if not turno_ids or len(turnos) != len(turno_ids):
+            messages.error(request, "Selecciona al menos un turno activo de esta organización.")
+            return redirect(
+                "web:inscripciones_turnos",
+                slug=hermandad.slug,
+            )
+
+        creadas = 0
+        existentes = 0
+        with transaction.atomic():
+            for turno in turnos:
+                _, creada = InscripcionTurno.objects.get_or_create(
+                    devoto=devoto,
+                    turno=turno,
+                    defaults={"inscrito_por": request.user},
+                )
+                creadas += int(creada)
+                existentes += int(not creada)
+
+        if creadas:
+            messages.success(
+                request,
+                f"Se registraron {creadas} turno(s) para {devoto.nombre_completo}.",
+            )
+        if existentes:
+            messages.info(
+                request,
+                f"{existentes} turno(s) ya estaban registrados para este devoto.",
+            )
+        return redirect(
+            f"{reverse('web:inscripciones_turnos', kwargs={'slug': hermandad.slug})}"
+            f"?codigo={devoto.comprobante_codigo}"
+        )
+
+    codigo = request.GET.get("codigo", "").strip()
+    devoto_objetivo = None
+    if codigo:
+        devoto_objetivo = get_object_or_404(
+            Devoto,
+            hermandad=hermandad,
+            comprobante_codigo=codigo,
+        )
+
+    inscripciones = InscripcionTurno.objects.filter(
+        turno__hermandad=hermandad,
+        devoto__hermandad=hermandad,
+    ).select_related("devoto", "turno", "entregado_por", "inscrito_por")
+
+    consulta = request.GET.get("q", "").strip()
+    if consulta:
+        inscripciones = inscripciones.filter(
+            Q(devoto__primer_nombre__icontains=consulta)
+            | Q(devoto__otros_nombres__icontains=consulta)
+            | Q(devoto__primer_apellido__icontains=consulta)
+            | Q(devoto__otros_apellidos__icontains=consulta)
+            | Q(devoto__correo__icontains=consulta)
+        )
+    if devoto_objetivo:
+        inscripciones = inscripciones.filter(devoto=devoto_objetivo)
+
+    turnos_disponibles = TurnoRecorrido.objects.filter(
+        hermandad=hermandad,
+        activa=True,
+    )
+    devotos = Devoto.objects.filter(hermandad=hermandad).order_by(
+        "primer_apellido",
+        "primer_nombre",
+    )
+    if consulta:
+        devotos = devotos.filter(
+            Q(primer_nombre__icontains=consulta)
+            | Q(otros_nombres__icontains=consulta)
+            | Q(primer_apellido__icontains=consulta)
+            | Q(otros_apellidos__icontains=consulta)
+            | Q(correo__icontains=consulta)
+            | Q(celular__icontains=consulta)
+        )
+    return render(
+        request,
+        "web/inscripciones_turnos.html",
+        {
+            "h": hermandad,
+            "color_primario": _color_organizacion(
+                hermandad.color_primario,
+                "#111111",
+            ),
+            "color_acento": _color_organizacion(
+                hermandad.color_acento,
+                "#b08d57",
+            ),
+            "texto_color_primario": _texto_contraste(
+                _color_organizacion(hermandad.color_primario, "#111111")
+            ),
+            "texto_color_acento": _texto_contraste(
+                _color_organizacion(hermandad.color_acento, "#b08d57")
+            ),
+            "devotos": devotos,
+            "devotos_encontrados": devotos.count() if consulta else None,
+            "turnos_disponibles": turnos_disponibles,
+            "inscripciones": inscripciones,
+            "devoto_objetivo": devoto_objetivo,
+            "consulta": consulta,
+        },
+    )
+
+
+@staff_member_required(login_url="web:administrativo_login")
+@require_POST
+def entregar_turno(request, slug, inscripcion_id):
+    hermandad = _hermandad_editor_por_slug(slug)
+    _validar_acceso_organizacion_staff(request, hermandad)
+
+    with transaction.atomic():
+        inscripcion = get_object_or_404(
+            InscripcionTurno.objects.select_for_update().select_related("devoto", "turno"),
+            pk=inscripcion_id,
+            devoto__hermandad=hermandad,
+            turno__hermandad=hermandad,
+        )
+        ya_entregado = inscripcion.entregado
+        if not ya_entregado:
+            inscripcion.entregado = True
+            inscripcion.entregado_en = timezone.now()
+            inscripcion.entregado_por = request.user
+            inscripcion.save(
+                update_fields=[
+                    "entregado",
+                    "entregado_en",
+                    "entregado_por",
+                ]
+            )
+
+    if ya_entregado:
+        messages.info(request, "Este turno ya estaba marcado como entregado.")
+    else:
+        devoto = inscripcion.devoto
+        messages.success(
+            request,
+            f"Turno {inscripcion.turno.numero} marcado como entregado a {devoto.nombre_completo}.",
+        )
+        if devoto.acepta_email:
+            try:
+                send_mail(
+                    subject=f"Turno {inscripcion.turno.numero} entregado - TRADICIÓN VIVA",
+                    message=(
+                        f"Hola {devoto.primer_nombre},\n\n"
+                        f"Confirmamos la entrega del Turno {inscripcion.turno.numero} "
+                        f"({inscripcion.turno.nombre_turno}) de {hermandad.nombre}.\n\n"
+                        "Gracias por tu participación."
+                    ),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[devoto.correo],
+                    fail_silently=False,
+                )
+            except Exception:
+                logger.exception(
+                    "Turno %s entregado, pero no se pudo notificar por correo al devoto %s",
+                    inscripcion.turno_id,
+                    devoto.pk,
+                )
+                messages.warning(
+                    request,
+                    "La entrega quedó registrada, pero no se pudo enviar el correo de confirmación.",
+                )
+        else:
+            messages.info(
+                request,
+                "La entrega quedó registrada. El devoto no autorizó notificaciones por correo.",
+            )
+
+    return redirect(
+        f"{reverse('web:inscripciones_turnos', kwargs={'slug': hermandad.slug})}"
+        f"?codigo={inscripcion.devoto.comprobante_codigo}"
+    )
+
+
+@staff_member_required(login_url="web:administrativo_login")
+@require_POST
+def limpiar_entrega_turno(request, slug, inscripcion_id):
+    hermandad = _hermandad_editor_por_slug(slug)
+    _validar_acceso_organizacion_staff(request, hermandad)
+
+    with transaction.atomic():
+        inscripcion = get_object_or_404(
+            InscripcionTurno.objects.select_for_update().select_related("devoto", "turno"),
+            pk=inscripcion_id,
+            devoto__hermandad=hermandad,
+            turno__hermandad=hermandad,
+        )
+        ya_pendiente = not inscripcion.entregado
+        codigo_devoto = inscripcion.devoto.comprobante_codigo
+        numero_turno = inscripcion.turno.numero
+        nombre_devoto = inscripcion.devoto.nombre_completo
+        if not ya_pendiente:
+            inscripcion.delete()
+
+    if ya_pendiente:
+        messages.info(request, "Solo se pueden quitar de la lista los turnos ya entregados.")
+    else:
+        messages.success(
+            request,
+            f"Se quitó de la lista el Turno {numero_turno} de {nombre_devoto}.",
+        )
+
+    return redirect(
+        f"{reverse('web:inscripciones_turnos', kwargs={'slug': hermandad.slug})}"
+        f"?codigo={codigo_devoto}"
     )
 
 
@@ -543,6 +898,46 @@ def editor_turnos(request, slug):
     _validar_acceso_organizacion_staff(request, h)
 
     if request.method == "POST":
+        if request.POST.get("action") == "reiniciar_seguimiento":
+            TurnoRecorrido.objects.filter(
+                hermandad=h,
+                alcanzado_en__isnull=False,
+            ).update(alcanzado_en=None)
+            h.gps_ultimo_turno_en_zona_id = None
+            h.save(update_fields=["gps_ultimo_turno_en_zona_id"])
+            messages.success(request, "El progreso GPS de los turnos se reinició.")
+            return redirect("web:editor_turnos", slug=h.slug)
+
+        if request.POST.get("action") == "guardar_trazado":
+            try:
+                ruta_trazado = _parse_route_points(request.POST.get("ruta_trazado"))
+            except ValueError as error:
+                messages.error(request, str(error))
+                return redirect("web:editor_turnos", slug=h.slug)
+
+            raw_turno_cambio = request.POST.get("turno_cambio_direccion", "").strip()
+            if raw_turno_cambio:
+                try:
+                    turno_cambio = int(raw_turno_cambio)
+                except ValueError:
+                    messages.error(request, "Selecciona un número de turno válido para el cambio de dirección.")
+                    return redirect("web:editor_turnos", slug=h.slug)
+                if turno_cambio < 0 or not TurnoRecorrido.objects.filter(
+                    hermandad=h,
+                    activa=True,
+                    numero=turno_cambio,
+                ).exists():
+                    messages.error(request, "El turno seleccionado para el cambio de dirección ya no está disponible.")
+                    return redirect("web:editor_turnos", slug=h.slug)
+            else:
+                turno_cambio = None
+
+            h.ruta_trazado = ruta_trazado
+            h.turno_cambio_direccion = turno_cambio
+            h.save(update_fields=["ruta_trazado", "turno_cambio_direccion"])
+            messages.success(request, "Trazado y cambio de colores del recorrido guardados correctamente.")
+            return redirect("web:editor_turnos", slug=h.slug)
+
         turno_id = request.POST.get("turno_id")
         try:
             numero = int(request.POST.get("numero", ""))
@@ -553,10 +948,18 @@ def editor_turnos(request, slug):
             messages.error(request, "Revisa el número, el orden y la ubicación del turno.")
             return redirect("web:editor_turnos", slug=h.slug)
 
+        if numero < 0 or orden_ruta < 0:
+            messages.error(request, "El número y el orden del turno deben ser cero o mayores.")
+            return redirect("web:editor_turnos", slug=h.slug)
+
         if turno_id:
             turno = get_object_or_404(TurnoRecorrido, id=turno_id, hermandad=h)
+            latitud_anterior = turno.latitud
+            longitud_anterior = turno.longitud
         else:
             turno = TurnoRecorrido(hermandad=h)
+            latitud_anterior = None
+            longitud_anterior = None
 
         turno.numero = numero
         turno.nombre_turno = request.POST.get("nombre_turno", "").strip()
@@ -575,10 +978,25 @@ def editor_turnos(request, slug):
 
         turno.full_clean()
         turno.save()
+        if latitud_anterior is not None and h.ruta_trazado:
+            ruta_actualizada = []
+            ruta_modificada = False
+            for punto in h.ruta_trazado:
+                if (
+                    abs(float(punto[0]) - float(latitud_anterior)) < 0.000001
+                    and abs(float(punto[1]) - float(longitud_anterior)) < 0.000001
+                ):
+                    ruta_actualizada.append([latitud, longitud])
+                    ruta_modificada = True
+                else:
+                    ruta_actualizada.append(punto)
+            if ruta_modificada:
+                h.ruta_trazado = ruta_actualizada
+                h.save(update_fields=["ruta_trazado"])
         messages.success(request, "Turno guardado correctamente.")
         return redirect("web:editor_turnos", slug=h.slug)
 
-    turnos, turnos_data, _ = _turnos_context(h)
+    turnos, turnos_data, ruta_coords = _turnos_context(h)
     return render(
         request,
         "web/editor_turnos.html",
@@ -586,6 +1004,9 @@ def editor_turnos(request, slug):
             "h": h,
             "turnos_data": turnos_data,
             "turnos": turnos,
+            "turnos_alcanzados": sum(turno.alcanzado_en is not None for turno in turnos),
+            "ruta_trazado": h.ruta_trazado or ruta_coords,
+            "turno_cambio_direccion": h.turno_cambio_direccion,
         },
     )
 
@@ -596,9 +1017,171 @@ def eliminar_turno(request, slug, turno_id):
     h = _hermandad_editor_por_slug(slug)
     _validar_acceso_organizacion_staff(request, h)
     turno = get_object_or_404(TurnoRecorrido, id=turno_id, hermandad=h)
-    turno.delete()
-    messages.success(request, "Turno eliminado.")
+    with transaction.atomic():
+        turno.delete()
+        quedan_turnos_activos = TurnoRecorrido.objects.filter(
+            hermandad=h,
+            activa=True,
+        ).exists()
+        if not quedan_turnos_activos:
+            h.ruta_trazado = []
+        quedan_puntos_de_cambio = TurnoRecorrido.objects.filter(
+            hermandad=h,
+            activa=True,
+            numero=h.turno_cambio_direccion,
+        ).exists() if h.turno_cambio_direccion is not None else True
+        update_fields = []
+        if not quedan_turnos_activos:
+            h.turno_cambio_direccion = None
+            update_fields.extend(["ruta_trazado", "turno_cambio_direccion"])
+        elif not quedan_puntos_de_cambio:
+            h.turno_cambio_direccion = None
+            update_fields.append("turno_cambio_direccion")
+        if update_fields:
+            h.save(update_fields=update_fields)
+        if h.gps_ultimo_turno_en_zona_id == turno.pk:
+            h.gps_ultimo_turno_en_zona_id = None
+            h.save(update_fields=["gps_ultimo_turno_en_zona_id"])
+
+    if quedan_turnos_activos:
+        messages.success(request, "Turno eliminado.")
+    else:
+        messages.success(request, "Turno eliminado y trazado del recorrido limpiado.")
     return redirect("web:editor_turnos", slug=h.slug)
+
+
+def _distancia_haversine_metros(latitud_a, longitud_a, latitud_b, longitud_b):
+    radio_tierra = 6_371_000
+    lat_a = math.radians(latitud_a)
+    lat_b = math.radians(latitud_b)
+    delta_lat = math.radians(latitud_b - latitud_a)
+    delta_lng = math.radians(longitud_b - longitud_a)
+    haversine = (
+        math.sin(delta_lat / 2) ** 2
+        + math.cos(lat_a) * math.cos(lat_b) * math.sin(delta_lng / 2) ** 2
+    )
+    return radio_tierra * 2 * math.atan2(math.sqrt(haversine), math.sqrt(1 - haversine))
+
+
+def _radio_llegada_turno(precision):
+    if precision is None:
+        return GPS_TURN_DEFAULT_RADIUS_METERS
+    try:
+        precision = float(precision)
+    except (TypeError, ValueError):
+        return GPS_TURN_DEFAULT_RADIUS_METERS
+    if not math.isfinite(precision) or precision <= 0:
+        return GPS_TURN_DEFAULT_RADIUS_METERS
+    if precision > GPS_TURN_MAX_ACCURACY_METERS:
+        return None
+    return min(
+        GPS_TURN_MAX_RADIUS_METERS,
+        max(GPS_TURN_MIN_RADIUS_METERS, precision),
+    )
+
+
+def _actualizar_progreso_turnos_gps(hermandad, latitud, longitud, position_time, precision):
+    radio_llegada = _radio_llegada_turno(precision)
+    with transaction.atomic():
+        hermandad_bloqueada = Hermandad.objects.select_for_update().get(pk=hermandad.pk)
+        if (
+            hermandad_bloqueada.ultima_posicion_turno_procesada_en
+            and position_time < hermandad_bloqueada.ultima_posicion_turno_procesada_en
+        ):
+            nueva_llegada = None
+        else:
+            nueva_llegada = None
+            turno_en_zona = None
+            if hermandad_bloqueada.gps_ultimo_turno_en_zona_id is not None:
+                turno_en_zona = TurnoRecorrido.objects.filter(
+                    pk=hermandad_bloqueada.gps_ultimo_turno_en_zona_id,
+                    hermandad=hermandad_bloqueada,
+                    activa=True,
+                    alcanzado_en__isnull=False,
+                ).first()
+                if turno_en_zona is None:
+                    hermandad_bloqueada.gps_ultimo_turno_en_zona_id = None
+
+            sigue_en_zona_anterior = bool(
+                turno_en_zona
+                and radio_llegada is not None
+                and _distancia_haversine_metros(
+                    latitud,
+                    longitud,
+                    turno_en_zona.latitud,
+                    turno_en_zona.longitud,
+                ) <= radio_llegada
+            )
+
+            if not sigue_en_zona_anterior and radio_llegada is not None:
+                hermandad_bloqueada.gps_ultimo_turno_en_zona_id = None
+                siguiente_turno = (
+                    TurnoRecorrido.objects.select_for_update()
+                    .filter(hermandad=hermandad_bloqueada, activa=True, alcanzado_en__isnull=True)
+                    .order_by("numero", "orden_ruta", "pk")
+                    .first()
+                )
+                if siguiente_turno:
+                    distancia = _distancia_haversine_metros(
+                        latitud,
+                        longitud,
+                        siguiente_turno.latitud,
+                        siguiente_turno.longitud,
+                    )
+                    if distancia <= radio_llegada:
+                        siguiente_turno.alcanzado_en = position_time
+                        siguiente_turno.save(update_fields=["alcanzado_en"])
+                        hermandad_bloqueada.gps_ultimo_turno_en_zona_id = siguiente_turno.pk
+                        nueva_llegada = siguiente_turno
+
+            hermandad_bloqueada.ultima_posicion_turno_procesada_en = position_time
+            hermandad_bloqueada.save(
+                update_fields=[
+                    "ultima_posicion_turno_procesada_en",
+                    "gps_ultimo_turno_en_zona_id",
+                ]
+            )
+
+        turnos_alcanzados = list(
+            TurnoRecorrido.objects.filter(
+                hermandad=hermandad_bloqueada,
+                activa=True,
+                alcanzado_en__isnull=False,
+            ).order_by("numero", "orden_ruta", "pk")
+        )
+        turno_detectado = nueva_llegada
+        if turno_detectado is None and radio_llegada is not None:
+            turnos_cercanos = [
+                turno
+                for turno in turnos_alcanzados
+                if _distancia_haversine_metros(
+                    latitud,
+                    longitud,
+                    turno.latitud,
+                    turno.longitud,
+                ) <= radio_llegada
+            ]
+            if turnos_cercanos:
+                turno_detectado = min(
+                    turnos_cercanos,
+                    key=lambda turno: _distancia_haversine_metros(
+                        latitud,
+                        longitud,
+                        turno.latitud,
+                        turno.longitud,
+                    ),
+                )
+
+        total_turnos = TurnoRecorrido.objects.filter(
+            hermandad=hermandad_bloqueada,
+            activa=True,
+        ).count()
+        return {
+            "turnos_alcanzados_ids": [turno.pk for turno in turnos_alcanzados],
+            "turno_detectado_id": turno_detectado.pk if turno_detectado else None,
+            "turnos_alcanzados": len(turnos_alcanzados),
+            "total_turnos": total_turnos,
+        }
 
 
 def api_ubicacion(request, slug):
@@ -609,8 +1192,37 @@ def api_ubicacion(request, slug):
     el dispositivo de la cuenta y luego localizamos su última posición.
     """
     h = get_object_or_404(Hermandad, slug=slug, activa=True)
+    client_ip = request.META.get("REMOTE_ADDR", "unknown")
+    ip_hash = hashlib.sha256(client_ip.encode("utf-8")).hexdigest()[:24]
+    cache_key = f"gps-rate:{h.pk}:{ip_hash}"
+    try:
+        if cache.add(cache_key, 1, timeout=60):
+            request_count = 1
+        else:
+            try:
+                request_count = cache.incr(cache_key)
+            except ValueError:
+                cache.set(cache_key, 1, timeout=60)
+                request_count = 1
+    except Exception:
+        logger.exception("No fue posible consultar el limitador de GPS")
+        return JsonResponse({"ok": False, "message": "El seguimiento no está disponible temporalmente."}, status=503)
+
+    if request_count > settings.GPS_API_RATE_LIMIT_PER_MINUTE:
+        response = JsonResponse(
+            {"ok": False, "message": "Se alcanzó el límite de consultas GPS. Intenta de nuevo en un minuto."},
+            status=429,
+        )
+        response["Retry-After"] = "60"
+        return response
+
     if not h.gps_activo:
         return JsonResponse({"ok": False, "message": "El seguimiento GPS no está habilitado para esta organización."})
+    if not h.gps_publicable:
+        return JsonResponse(
+            {"ok": False, "message": "El seguimiento GPS está fuera del horario público del evento."},
+            status=403,
+        )
 
     identificador = str(h.traccar_device_id or "").strip()
     if not identificador:
@@ -691,10 +1303,40 @@ def api_ubicacion(request, slug):
             matching,
             key=lambda p: p.get("serverTime") or p.get("deviceTime") or "",
         )
+        updated_at = position.get("serverTime") or position.get("deviceTime")
+        position_time = parse_datetime(updated_at) if isinstance(updated_at, str) else None
+        if position_time is None:
+            return JsonResponse({"ok": False, "message": "Traccar no devolvió la hora de la ubicación."}, status=502)
+        if timezone.is_naive(position_time):
+            position_time = timezone.make_aware(position_time, datetime_timezone.utc)
+        age = timezone.now() - position_time
+        if age < timedelta(minutes=-1) or age > timedelta(minutes=settings.GPS_MAX_POSITION_AGE_MINUTES):
+            return JsonResponse({"ok": False, "message": "La última ubicación GPS está desactualizada."})
+
         latitude = position.get("latitude")
         longitude = position.get("longitude")
         if latitude is None or longitude is None:
             return JsonResponse({"ok": False, "message": "La última posición de Traccar no contiene coordenadas válidas."}, status=502)
+        try:
+            latitude = float(latitude)
+            longitude = float(longitude)
+        except (TypeError, ValueError):
+            return JsonResponse({"ok": False, "message": "Traccar devolvió coordenadas GPS no válidas."}, status=502)
+        if (
+            not math.isfinite(latitude)
+            or not math.isfinite(longitude)
+            or not -90 <= latitude <= 90
+            or not -180 <= longitude <= 180
+        ):
+            return JsonResponse({"ok": False, "message": "Traccar devolvió coordenadas GPS fuera de rango."}, status=502)
+
+        progreso_turnos = _actualizar_progreso_turnos_gps(
+            h,
+            latitude,
+            longitude,
+            position_time,
+            position.get("accuracy"),
+        )
 
         return JsonResponse(
             {
@@ -702,12 +1344,8 @@ def api_ubicacion(request, slug):
                 "latitude": latitude,
                 "longitude": longitude,
                 "accuracy": position.get("accuracy"),
-                "speed": position.get("speed"),
-                "course": position.get("course"),
-                "deviceTime": position.get("deviceTime"),
-                "serverTime": position.get("serverTime"),
-                "deviceName": device.get("name") or h.nombre_dispositivo_gps or "Dispositivo GPS",
-                "identifier": identificador,
+                "updatedAt": position_time.isoformat(),
+                **progreso_turnos,
             }
         )
     except requests.RequestException:

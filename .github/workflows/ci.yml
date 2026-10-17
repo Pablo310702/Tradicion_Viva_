@@ -1,0 +1,52 @@
+name: Django CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: tradicion_viva_test
+          POSTGRES_USER: tv_user
+          POSTGRES_PASSWORD: tv_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tv_user -d tradicion_viva_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://tv_user:tv_password@127.0.0.1:5432/tradicion_viva_test
+      SECRET_KEY: ci-only-secret-key-not-used-outside-tests-12345678901234567890
+      JWT_SECRET_KEY: ci-only-jwt-secret-not-used-outside-tests-12345678901234567890
+      DEBUG: "False"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      SECURE_SSL_REDIRECT: "False"
+      SECURE_HSTS_SECONDS: "31536000"
+      RLS_TEST_ROLE: tv_rls_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Create restricted PostgreSQL role
+        run: psql "$DATABASE_URL" -c "CREATE ROLE tv_rls_test NOLOGIN"
+      - name: Check migrations
+        run: python manage.py makemigrations --check --dry-run
+      - name: Check production security settings
+        run: python manage.py check --deploy
+        env:
+          SECURE_SSL_REDIRECT: "True"
+          SECURE_HSTS_INCLUDE_SUBDOMAINS: "True"
+          SECURE_HSTS_PRELOAD: "True"
+      - name: Run PostgreSQL test suite
+        run: python manage.py test

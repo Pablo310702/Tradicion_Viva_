@@ -131,19 +131,21 @@ Información, agenda y recorrido de {{ h.nombre }}.
 {% else %}
 <style>
   :root {
-    --theme-page: #0f0f0f;
-    --theme-surface: #151515;
-    --theme-surface-2: #1b1b1b;
-    --theme-header: #080808;
+    /* Las nuevas organizaciones usan los colores configurados en Django. */
+    --theme-page: {{ h.color_primario|default:'#0f0f0f' }};
+    --theme-surface: color-mix(in srgb, {{ h.color_primario|default:'#0f0f0f' }} 92%, white);
+    --theme-surface-2: color-mix(in srgb, {{ h.color_primario|default:'#0f0f0f' }} 82%, white);
+    --theme-header: {{ h.color_primario|default:'#080808' }};
     --theme-header-text: #ffffff;
     --theme-text: #f5f5f5;
     --theme-muted: #bdbdbd;
-    --theme-border: #303030;
-    --theme-accent: #d4af37;
-    --theme-accent-strong: #b08d57;
+    --theme-border: {{ h.color_acento|default:'#303030' }};
+    --theme-accent: {{ h.color_acento|default:'#d4af37' }};
+    --theme-accent-strong: {{ h.color_acento|default:'#b08d57' }};
     --theme-on-accent: #111111;
     --theme-shadow: rgba(0,0,0,.25);
   }
+
 </style>
 {% endif %}
 
@@ -156,7 +158,7 @@ style="background: var(--theme-accent, #d4af37);"
 {% block brand %}
 <a
   href="{% url 'web:home' %}"
-  class="theme-brand"
+  class="theme-brand{% if h.slug != 'rosario-merced' and h.slug != 'san-jose' and 'Calvario' not in h.nombre and 'Desamparo' not in h.nombre and 'Soledad' not in h.nombre %} theme-brand-default{% endif %}"
 >
   {% if h.logo %}
     <img
@@ -237,7 +239,7 @@ style="background: var(--theme-accent, #d4af37);"
   .theme-brand {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 2px;
     color: var(--theme-header-text) !important;
     text-decoration: none;
   }
@@ -246,8 +248,24 @@ style="background: var(--theme-accent, #d4af37);"
     height: 40px;
     width: 40px;
     object-fit: cover;
+    align-self: center;
     border-radius: 8px;
     border: 1px solid var(--theme-border);
+  }
+
+  .theme-brand-default {
+    gap: 8px;
+  }
+
+  .theme-brand-default .theme-brand-logo {
+    width: 40px;
+    height: 40px;
+    align-self: center;
+    transform: none;
+  }
+
+  .theme-brand-default span {
+    line-height: 1.2;
   }
 
 
@@ -671,4 +689,3 @@ style="background: var(--theme-accent, #d4af37);"
 </section>
 
 {% endblock %}
-

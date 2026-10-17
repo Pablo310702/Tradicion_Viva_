@@ -1,0 +1,334 @@
+{% extends "web/base.html" %}
+{% load static %}
+
+{% block title %}Inscripciones y entrega de turnos | {{ h.nombre }}{% endblock %}
+
+{% block brand %}
+<a href="{% url 'web:home' %}" style="display:flex;align-items:center;gap:10px;">
+  {% if h.logo %}
+    <img src="{{ h.logo.url }}" style="height:40px;border-radius:8px;" alt="Logo">
+  {% endif %}
+  Inscripciones y entregas · {{ h.nombre }}
+</a>
+{% endblock %}
+
+{% block extra_css %}
+{% include "web/_tema_organizacion_css.html" %}
+<style>
+  :root{
+    --theme-page:#f7f6f8;
+    --theme-surface:#ffffff;
+    --theme-surface-2:#f3f1f4;
+    --theme-header:{{ color_primario }};
+    --theme-topbar:{{ color_acento }};
+    --theme-text:#211a24;
+    --theme-muted:#514956;
+    --theme-border:{{ color_acento }};
+    --theme-accent:{{ color_acento }};
+    --theme-accent-strong:{{ color_primario }};
+    --theme-button:{{ color_acento }};
+    --theme-button-hover:{{ color_acento }};
+    --theme-button-text:{{ texto_color_acento }};
+    --theme-shadow:rgba(0,0,0,.12);
+  }
+
+  .header-inner .brand a,
+  .header-inner .brand a *{color:{{ texto_color_primario }}!important}
+  .header-inner .session-link{
+    background:var(--theme-button);
+    border-color:var(--theme-accent-strong);
+    color:var(--theme-button-text);
+  }
+  .header-inner .session-link:hover{
+    background:var(--theme-button-hover);
+    color:var(--theme-button-text);
+  }
+  .admin-inscripciones{display:grid;gap:22px;margin:20px 0 36px}
+  .card{background:var(--theme-surface);border:1px solid var(--theme-border);border-radius:16px;padding:22px;box-shadow:0 8px 24px var(--theme-shadow)}
+  h1,h2{margin:0 0 12px;color:var(--theme-text)}
+  .help{color:var(--theme-muted);line-height:1.55;margin:0 0 16px}
+  .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  label{font-weight:700}
+  input[type=search]{width:100%;padding:11px 12px;border:1px solid var(--theme-border);border-radius:9px;background:#fff;color:#211a24}
+  .enrollment-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:9px}
+  .enrollment-option{display:flex;gap:9px;align-items:flex-start;padding:12px;border:1px solid var(--theme-border);border-radius:10px;background:var(--theme-surface-2)}
+  .enrollment-option input{margin-top:4px;accent-color:var(--theme-accent)}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .button{border:1px solid var(--theme-accent-strong);border-radius:9px;padding:11px 15px;background:var(--theme-button);color:var(--theme-button-text);font-weight:800;cursor:pointer}
+  .button-secondary{background:var(--theme-surface);color:var(--theme-text)}
+  .button:hover{filter:brightness(1.08)}
+  .search-form{display:flex;gap:9px;margin:12px 0 18px}
+  .devoto-result{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--theme-border)}
+  .devoto-result p{margin:4px 0;color:var(--theme-muted)}
+  .selected-devoto{padding:14px;border-left:4px solid var(--theme-accent);border-radius:8px;background:var(--theme-surface-2)}
+  .scanner-controls{display:flex;gap:10px;flex-wrap:wrap}
+  .scanner-view{margin-top:16px}
+  .scanner-video{display:block;width:min(100%,560px);max-height:65vh;aspect-ratio:4/3;object-fit:cover;border-radius:12px;background:#111}
+  .scanner-status{min-height:1.5em;margin:10px 0 0;color:var(--theme-muted)}
+  .inscripcion{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:15px 0;border-top:1px solid var(--theme-border)}
+  .inscripcion p{margin:4px 0;color:var(--theme-muted)}
+  .estado{display:inline-block;padding:4px 9px;border-radius:999px;font-size:13px;font-weight:800}
+  .pendiente{background:#fff0d7;color:#6d4300}
+  .entregado{background:#dff3e4;color:#18542c}
+  .target{outline:2px solid var(--theme-accent);outline-offset:3px}
+  .empty{padding:18px;text-align:center;color:var(--theme-muted)}
+  @media(max-width:650px){
+    .card{padding:17px}
+    .form-grid{grid-template-columns:1fr}
+    .inscripcion{grid-template-columns:1fr}
+    .search-form{flex-direction:column}
+    .devoto-result{align-items:flex-start;flex-direction:column}
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-inscripciones">
+  <section class="card">
+    <h1>Inscripciones y entrega de turnos</h1>
+    <p class="help">
+      Registra los turnos adquiridos por cada devoto. Para atender una entrega,
+      escanea el QR de su comprobante con la sesión administrativa iniciada;
+      se mostrarán únicamente sus turnos y podrás confirmarlos uno por uno.
+    </p>
+    <a class="button" href="{% url 'web:editor_turnos' h.slug %}">Volver al editor de turnos</a>
+  </section>
+
+  <section class="card">
+    <h2>Escanear comprobante del devoto</h2>
+    <p class="help">Abre la cámara y apunta al código QR del comprobante. El escáner localizará al devoto para asignar sus turnos o confirmar una entrega.</p>
+    <div class="scanner-controls">
+      <button class="button" id="openScanner" type="button">Abrir escáner</button>
+      <button class="button button-secondary" id="closeScanner" type="button" hidden>Cerrar cámara</button>
+    </div>
+    <div class="scanner-view" id="scannerView" hidden>
+      <video class="scanner-video" id="scannerVideo" playsinline muted></video>
+      <p class="scanner-status" id="scannerStatus" role="status" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Buscar devoto</h2>
+    <p class="help">Si no tienes el comprobante a la mano, busca por nombre, correo o celular.</p>
+    <form class="search-form" method="get">
+      <input type="search" name="q" value="{{ consulta }}" placeholder="Nombre, correo o celular" aria-label="Buscar devoto por nombre, correo o celular">
+      <button class="button" type="submit">Buscar</button>
+    </form>
+    {% if consulta %}
+      {% for devoto in devotos %}
+        <article class="devoto-result">
+          <div>
+            <strong>{{ devoto.nombre_completo }}</strong>
+            <p>{{ devoto.correo }} · {{ devoto.celular }}</p>
+          </div>
+          <a class="button" href="?codigo={{ devoto.comprobante_codigo }}&amp;q={{ consulta|urlencode }}">Ver devoto y sus turnos</a>
+        </article>
+      {% empty %}
+        <p class="empty">No se encontraron devotos con esos datos.</p>
+      {% endfor %}
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Registrar inscripción</h2>
+    {% if devoto_objetivo %}
+      <p class="selected-devoto"><strong>Devoto:</strong> {{ devoto_objetivo.nombre_completo }} · {{ devoto_objetivo.correo }}</p>
+      <p class="help">Selecciona los turnos adquiridos. Los que ya están registrados no se duplicarán.</p>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="devoto_id" value="{{ devoto_objetivo.pk }}">
+        <div class="enrollment-options">
+          {% for turno in turnos_disponibles %}
+            <label class="enrollment-option">
+              <input type="checkbox" name="turno_ids" value="{{ turno.pk }}">
+              <span>Turno {{ turno.numero }} · {{ turno.nombre_turno }}<br>{{ turno.pieza }}</span>
+            </label>
+          {% empty %}
+            <p>No hay turnos activos disponibles para registrar.</p>
+          {% endfor %}
+        </div>
+        <div class="actions">
+          <button class="button" type="submit">Asignar turno(s)</button>
+        </div>
+      </form>
+    {% else %}
+      <p class="help">Primero escanea el comprobante o busca un devoto para asignarle turnos.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>{% if devoto_objetivo %}Turnos de {{ devoto_objetivo.nombre_completo }}{% else %}Inscripciones registradas{% endif %}</h2>
+    <form class="search-form" method="get">
+      {% if devoto_objetivo %}<input type="hidden" name="codigo" value="{{ devoto_objetivo.comprobante_codigo }}">{% endif %}
+      <input type="search" name="q" value="{{ consulta }}" placeholder="Buscar por nombre o correo">
+      <button class="button" type="submit">Buscar</button>
+    </form>
+    {% for inscripcion in inscripciones %}
+      <article class="inscripcion {% if devoto_objetivo.pk == inscripcion.devoto_id %}target{% endif %}">
+        <div>
+          <strong>{{ inscripcion.devoto.nombre_completo }}</strong>
+          <p>{{ inscripcion.devoto.correo }} · {{ inscripcion.devoto.celular }}</p>
+          <p><strong>Turno {{ inscripcion.turno.numero }}:</strong> {{ inscripcion.turno.nombre_turno }} · {{ inscripcion.turno.pieza }}</p>
+          {% if inscripcion.entregado %}
+            <span class="estado entregado">Entregado {{ inscripcion.entregado_en|date:"d/m/Y H:i" }}{% if inscripcion.entregado_por %} por {{ inscripcion.entregado_por.get_full_name|default:inscripcion.entregado_por.get_username }}{% endif %}</span>
+          {% else %}
+            <span class="estado pendiente">Pendiente de entrega</span>
+          {% endif %}
+        </div>
+        {% if inscripcion.entregado %}
+          <form method="post" action="{% url 'web:limpiar_entrega_turno' h.slug inscripcion.pk %}">
+            {% csrf_token %}
+            <button class="button button-secondary" type="submit">Eliminar registro</button>
+          </form>
+        {% else %}
+          <form method="post" action="{% url 'web:entregar_turno' h.slug inscripcion.pk %}">
+            {% csrf_token %}
+            <button class="button" type="submit">Marcar como entregado</button>
+          </form>
+        {% endif %}
+      </article>
+    {% empty %}
+      <p class="empty">
+        {% if devoto_objetivo %}
+          Este devoto aún no tiene turnos inscritos.
+        {% else %}
+          No hay inscripciones que coincidan con la búsqueda.
+        {% endif %}
+      </p>
+    {% endfor %}
+  </section>
+</div>
+<script src="{% static 'web/vendor/jsQR.js' %}"></script>
+<script>
+  (() => {
+    const openButton = document.getElementById("openScanner");
+    const closeButton = document.getElementById("closeScanner");
+    const scannerView = document.getElementById("scannerView");
+    const video = document.getElementById("scannerVideo");
+    const status = document.getElementById("scannerStatus");
+    const canvas = document.createElement("canvas");
+    const canvasContext = canvas.getContext("2d", { willReadFrequently: true });
+    let cameraStream = null;
+    let scanActive = false;
+    let lastScanTime = 0;
+
+    function closeCamera() {
+      scanActive = false;
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+      }
+      video.srcObject = null;
+      scannerView.hidden = true;
+      closeButton.hidden = true;
+      openButton.hidden = false;
+    }
+
+    function goToDevoto(rawValue) {
+      let codigo = rawValue.trim();
+      try {
+        const qrUrl = new URL(rawValue, window.location.origin);
+        const qrPath = qrUrl.pathname.match(/\/devoto\/qr\/([0-9a-f-]{36})\/?$/i);
+        if (qrPath) {
+          codigo = qrPath[1];
+        } else {
+          codigo = qrUrl.searchParams.get("registro") || codigo;
+        }
+      } catch (error) {
+        console.error("No fue posible interpretar el QR escaneado.", error);
+      }
+
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(codigo)) {
+        status.textContent = "El código no corresponde a un comprobante de devoto válido.";
+        return false;
+      }
+
+      closeCamera();
+      window.location.assign(`/devoto/qr/${codigo}/`);
+      return true;
+    }
+
+    function scanFrame(timestamp) {
+      if (!scanActive || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+        if (scanActive) window.requestAnimationFrame(scanFrame);
+        return;
+      }
+
+      if (timestamp - lastScanTime < 120) {
+        window.requestAnimationFrame(scanFrame);
+        return;
+      }
+      lastScanTime = timestamp;
+
+      try {
+        const scale = Math.min(1, 800 / video.videoWidth);
+        canvas.width = Math.round(video.videoWidth * scale);
+        canvas.height = Math.round(video.videoHeight * scale);
+        canvasContext.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const image = canvasContext.getImageData(0, 0, canvas.width, canvas.height);
+        const code = window.jsQR(image.data, image.width, image.height, {
+          inversionAttempts: "dontInvert"
+        });
+        if (code && goToDevoto(code.data)) return;
+      } catch (error) {
+        console.error("Falló la lectura del código QR.", error);
+        status.textContent = "No se pudo leer el código. Cierra y vuelve a abrir el escáner.";
+        closeCamera();
+        return;
+      }
+
+      if (scanActive) window.requestAnimationFrame(scanFrame);
+    }
+
+    openButton.addEventListener("click", async () => {
+      scannerView.hidden = false;
+      status.textContent = "";
+
+      if (!window.jsQR) {
+        status.textContent = "No se pudo cargar el lector QR. Usa la búsqueda de devotos o recarga la página.";
+        return;
+      }
+      if (!window.isSecureContext) {
+        status.textContent = "La cámara requiere una conexión segura (HTTPS o localhost). Usa la búsqueda de devotos.";
+        return;
+      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        status.textContent = "No se puede acceder a la cámara desde esta conexión. Usa la búsqueda de devotos.";
+        return;
+      }
+      try {
+        video.hidden = false;
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false
+        });
+        video.srcObject = cameraStream;
+        await video.play();
+        openButton.hidden = true;
+        closeButton.hidden = false;
+        status.textContent = "Apunta la cámara al código QR del comprobante.";
+        scanActive = true;
+        window.requestAnimationFrame(scanFrame);
+      } catch (error) {
+        console.error("No fue posible iniciar la cámara para escanear.", error);
+        const errorMessages = {
+          NotAllowedError: "No se concedió permiso para usar la cámara. Autorízalo en el navegador o busca al devoto.",
+          NotFoundError: "No se encontró una cámara disponible. Usa la búsqueda de devotos.",
+          NotReadableError: "La cámara está siendo usada por otra aplicación. Ciérrala e intenta de nuevo."
+        };
+        const errorMessage = errorMessages[error.name]
+          || "No se pudo abrir la cámara. Revisa sus permisos o busca al devoto.";
+        closeCamera();
+        scannerView.hidden = false;
+        video.hidden = true;
+        status.textContent = errorMessage;
+      }
+    });
+
+    closeButton.addEventListener("click", () => {
+      closeCamera();
+      status.textContent = "Escáner cerrado.";
+    });
+  })();
+</script>
+{% endblock %}

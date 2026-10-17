@@ -44,7 +44,14 @@ def main() -> int:
     )
     twilio_ok = present(settings.TWILIO_ACCOUNT_SID) and twilio_auth and twilio_sender
     whatsapp_ok = present(settings.WHATSAPP_ACCESS_TOKEN) and present(settings.WHATSAPP_PHONE_NUMBER_ID)
+    smtp_ok = all(
+        present(value)
+        for value in (settings.EMAIL_HOST, settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
+    ) and settings.EMAIL_BACKEND.endswith("smtp.EmailBackend")
+    whatsapp_receipt_ok = whatsapp_ok and present(settings.WHATSAPP_RECEIPT_TEMPLATE_NAME)
 
+    print(f"Correo / SMTP: {mark(smtp_ok)}")
+    print(f"  Servidor, usuario y clave: {mark(smtp_ok)}")
     print(f"SMS / Twilio: {mark(twilio_ok)}")
     print(f"  Account SID: {mark(present(settings.TWILIO_ACCOUNT_SID))}")
     print(f"  Autenticación: {mark(twilio_auth)}")
@@ -53,11 +60,12 @@ def main() -> int:
     print(f"  Access Token: {mark(present(settings.WHATSAPP_ACCESS_TOKEN))}")
     print(f"  Phone Number ID: {mark(present(settings.WHATSAPP_PHONE_NUMBER_ID))}")
     print(f"  Plantilla predeterminada: {mark(present(settings.WHATSAPP_DEFAULT_TEMPLATE_NAME))}")
+    print(f"  Plantilla Utility de comprobantes: {mark(whatsapp_receipt_ok)}")
     print(f"URL pública para webhooks: {mark(present(settings.PUBLIC_BASE_URL))}")
 
     if not args.network:
         print("\nNo se hicieron conexiones externas. Usa --network para validar credenciales sin enviar mensajes.")
-        return 0 if (twilio_ok or whatsapp_ok) else 1
+        return 0 if (smtp_ok or twilio_ok or whatsapp_ok) else 1
 
     print("\nComprobación de red (sin envíos):")
     timeout = settings.MESSAGING_HTTP_TIMEOUT

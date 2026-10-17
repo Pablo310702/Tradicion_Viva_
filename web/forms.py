@@ -64,7 +64,6 @@ class DevotoForm(forms.ModelForm):
             "medida_hombro_cm",
             "acepta_privacidad",
             "acepta_email",
-            "acepta_sms",
             "acepta_whatsapp",
         ]
         widgets = {
@@ -122,10 +121,6 @@ class DevotoForm(forms.ModelForm):
         self.fields["acepta_email"].required = False
         self.fields["acepta_email"].label = (
             "Autorizo recibir por correo electrónico avisos, saludos e información institucional."
-        )
-        self.fields["acepta_sms"].required = False
-        self.fields["acepta_sms"].label = (
-            "Autorizo recibir por SMS avisos, saludos e información institucional en mi número registrado."
         )
         self.fields["acepta_whatsapp"].required = False
         self.fields["acepta_whatsapp"].label = (
@@ -260,12 +255,17 @@ class DevotoForm(forms.ModelForm):
                 # Vincula registros antiguos que ya usaban el mismo correo pero fueron creados antes del inicio de sesión.
                 Devoto.objects.filter(cuenta__isnull=True, correo__iexact=cuenta.correo).update(cuenta=cuenta)
         instance.cuenta = cuenta
+        if commit:
+            # Vincula registros antiguos aunque la cuenta ya existiera.
+            Devoto.objects.filter(
+                cuenta__isnull=True,
+                correo__iexact=cuenta.correo,
+            ).update(cuenta=cuenta)
         # Compatibilidad: el indicador general queda activo si autorizó al
         # menos uno de los canales disponibles.
         instance.acepta_comunicaciones = any(
             [
                 self.cleaned_data.get("acepta_email", False),
-                self.cleaned_data.get("acepta_sms", False),
                 self.cleaned_data.get("acepta_whatsapp", False),
             ]
         )

@@ -101,6 +101,27 @@
     overflow:hidden;
   }
 
+  .route-direction-legend{
+    display:flex;
+    gap:16px;
+    flex-wrap:wrap;
+    margin:12px 4px 0;
+    color:#ddd;
+    font-size:14px;
+  }
+
+  .route-direction-legend span{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+  }
+
+  .route-direction-legend i{
+    width:18px;
+    height:6px;
+    border-radius:999px;
+  }
+
   .info-card{
     padding:22px;
   }
@@ -127,6 +148,12 @@
     border-radius:18px;
     background:#111;
     border:1px solid #333;
+  }
+
+  .turno-gps-progress{
+    margin-top:10px;
+    color:#aaa;
+    font-size:14px;
   }
 
   .turno-actual h3{
@@ -210,6 +237,10 @@
 <section class="seguimiento-grid">
   <div class="map-card">
     <div id="mapaSeguimiento"></div>
+    <div class="route-direction-legend" id="routeDirectionLegend" hidden>
+      <span><i style="background:#2563eb"></i>Ida</span>
+      <span><i style="background:#dc2626"></i>Vuelta</span>
+    </div>
   </div>
 
   <aside class="info-card">
@@ -238,16 +269,92 @@
 
 {{ turnos_data|json_script:"turnos-data" }}
 {{ ruta_coords|json_script:"ruta-coords" }}
+{{ ruta_trazado|json_script:"ruta-trazado-data" }}
+{{ turno_cambio_direccion|json_script:"turno-cambio-direccion-data" }}
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
   const turnos = JSON.parse(document.getElementById("turnos-data").textContent);
   const ruta = JSON.parse(document.getElementById("ruta-coords").textContent);
-  const gpsActivo = {{ h.gps_configurado|yesno:"true,false" }};
-  const DISTANCIA_DETECCION_TURNO_METROS = 5;
-  const PRECISION_GPS_MAXIMA_METROS = 5;
+  const rutaTrazado = JSON.parse(document.getElementById("ruta-trazado-data").textContent);
+  const turnoCambioDireccion = JSON.parse(document.getElementById("turno-cambio-direccion-data").textContent);
+  const gpsActivo = {{ gps_publicable|yesno:"true,false" }};
+  const gpsConfigurado = {{ h.gps_configurado|yesno:"true,false" }};
 
   const centroInicial = ruta.length ? ruta[0] : [14.5566, -90.7332];
+
+  function ajustarColorAcento(hex, saturacionExtra = 1.25, luminosidadBase = 0.72) {
+    const valor = String(hex || "#d4af37").trim();
+    if (!valor.startsWith("#")) return valor;
+
+    let color = valor;
+    if (color.length === 4) {
+      color = color.split("").map((char) => char + char).join("");
+    }
+    if (color.length !== 7) return valor;
+
+    const num = Number.parseInt(color.slice(1), 16);
+    const r = (num >> 16) & 255;
+    const g = (num >> 8) & 255;
+    const b = num & 255;
+
+    const rojo = r / 255;
+    const verde = g / 255;
+    const azul = b / 255;
+    const max = Math.max(rojo, verde, azul);
+    const min = Math.min(rojo, verde, azul);
+    let hue = 0;
+    let saturation = 0;
+    const lightness = (max + min) / 2;
+
+    if (max !== min) {
+      const delta = max - min;
+      saturation = delta / (1 - Math.abs(2 * lightness - 1));
+      switch (max) {
+        case rojo:
+          hue = ((verde - azul) / delta) % 6;
+          break;
+        case verde:
+          hue = (azul - rojo) / delta + 2;
+          break;
+        default:
+          hue = (rojo - verde) / delta + 4;
+          break;
+      }
+      hue *= 60;
+      if (hue < 0) hue += 360;
+    }
+
+    const nuevaSaturacion = Math.min(1, Math.max(0.55, saturation * saturacionExtra));
+    const nuevaLuminosidad = Math.min(0.68, Math.max(0.24, lightness * luminosidadBase));
+
+    const c = (1 - Math.abs(2 * nuevaLuminosidad - 1)) * nuevaSaturacion;
+    const x = c * (1 - Math.abs((hue / 60) % 2 - 1));
+    const m = nuevaLuminosidad - c / 2;
+
+    let r1 = 0;
+    let g1 = 0;
+    let b1 = 0;
+
+    if (hue < 60) {
+      r1 = c; g1 = x; b1 = 0;
+    } else if (hue < 120) {
+      r1 = x; g1 = c; b1 = 0;
+    } else if (hue < 180) {
+      r1 = 0; g1 = c; b1 = x;
+    } else if (hue < 240) {
+      r1 = 0; g1 = x; b1 = c;
+    } else if (hue < 300) {
+      r1 = x; g1 = 0; b1 = c;
+    } else {
+      r1 = c; g1 = 0; b1 = x;
+    }
+
+    const toHex = (channel) => Math.round((channel + m) * 255).toString(16).padStart(2, "0");
+    return `#${toHex(r1)}${toHex(g1)}${toHex(b1)}`;
+  }
+
+  const colorAcento = ajustarColorAcento("{{ h.color_acento|default:'#d4af37' }}");
 
   const map = L.map('mapaSeguimiento').setView(centroInicial, 16);
 
@@ -257,14 +364,77 @@
     '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> | Tradición Viva'
 }).addTo(map);
 
-  if (ruta.length > 1) {
-    const linea = L.polyline(ruta, {
-      color: '{{ h.color_acento|default:'#c9a13b' }}',
-      weight: 6,
-      opacity: 0.9
-    }).addTo(map);
+  const rutaVisible = rutaTrazado.length ? rutaTrazado : ruta;
+  function dividirRutaPorTurno(puntos, numeroCambio) {
+    if (numeroCambio === null || numeroCambio === "" || puntos.length < 2) return null;
+    let turnoCambio = null;
+    turnos.forEach(turno => {
+      if (turno.numero === Number(numeroCambio)) turnoCambio = turno;
+    });
+    if (!turnoCambio) return null;
 
-    map.fitBounds(linea.getBounds(), { padding: [25, 25] });
+    const ancla = map.latLngToLayerPoint(turnoCambio.coords);
+    let mejor = null;
+    for (let indice = 0; indice < puntos.length - 1; indice += 1) {
+      const inicio = map.latLngToLayerPoint(puntos[indice]);
+      const fin = map.latLngToLayerPoint(puntos[indice + 1]);
+      const dx = fin.x - inicio.x;
+      const dy = fin.y - inicio.y;
+      const largoCuadrado = dx * dx + dy * dy;
+      const proporcion = largoCuadrado
+        ? Math.max(0, Math.min(1, ((ancla.x - inicio.x) * dx + (ancla.y - inicio.y) * dy) / largoCuadrado))
+        : 0;
+      const x = inicio.x + proporcion * dx;
+      const y = inicio.y + proporcion * dy;
+      const distancia = (ancla.x - x) ** 2 + (ancla.y - y) ** 2;
+      if (!mejor || distancia < mejor.distancia) {
+        mejor = { indice, distancia, punto: map.layerPointToLatLng(L.point(x, y)) };
+      }
+    }
+    if (!mejor) return null;
+
+    const puntoCambio = [mejor.punto.lat, mejor.punto.lng];
+    const ida = rutaVisible.slice(0, mejor.indice + 1);
+    const ultimoPuntoIda = ida[ida.length - 1];
+    if (
+      Math.abs(ultimoPuntoIda[0] - puntoCambio[0]) > 0.000001
+      || Math.abs(ultimoPuntoIda[1] - puntoCambio[1]) > 0.000001
+    ) ida.push(puntoCambio);
+
+    const vuelta = [puntoCambio];
+    rutaVisible.slice(mejor.indice + 1).forEach(punto => {
+      const anterior = vuelta[vuelta.length - 1];
+      if (
+        Math.abs(anterior[0] - punto[0]) > 0.000001
+        || Math.abs(anterior[1] - punto[1]) > 0.000001
+      ) vuelta.push([...punto]);
+    });
+    return [ida, vuelta];
+  }
+
+  const rutasPorDireccion = dividirRutaPorTurno(rutaVisible, turnoCambioDireccion);
+  const lineasRuta = [];
+  if (rutasPorDireccion) {
+    rutasPorDireccion.forEach((puntos, indice) => {
+      if (puntos.length < 2) return;
+      lineasRuta.push(L.polyline(puntos, {
+        color: indice === 0 ? "#2563eb" : "#dc2626",
+        weight: 6,
+        opacity: 0.9,
+      }).addTo(map));
+    });
+    document.getElementById("routeDirectionLegend").hidden = lineasRuta.length < 2;
+  } else if (rutaVisible.length > 1) {
+    lineasRuta.push(L.polyline(rutaVisible, {
+      color: colorAcento,
+      weight: 6,
+      opacity: 0.9,
+    }).addTo(map));
+  }
+
+  if (lineasRuta.length) {
+    const bounds = L.featureGroup(lineasRuta).getBounds();
+    if (bounds.isValid()) map.fitBounds(bounds, { padding: [25, 25] });
   }
 
   function actualizarDato(id, valor) {
@@ -286,25 +456,42 @@
     actualizarDato("datoDireccion", turno && turno.direccion);
   }
 
+  let turnoActualGpsId = null;
+
   function actualizarMarcadorTurno(turnoDetectado) {
+    if (turnoDetectado) turnoActualGpsId = turnoDetectado.id;
     turnos.forEach(turno => {
       if (!turno.marker) return;
-      const esActual = turnoDetectado && turno.id === turnoDetectado.id;
+      const esActual = turnoActualGpsId === turno.id;
+      const alcanzado = Boolean(turno.alcanzado_en);
       turno.marker.setStyle({
-        color: esActual ? "#ffffff" : "{{ h.color_acento|default:'#d4af37' }}",
-        fillColor: esActual ? "#168f4b" : "{{ h.color_acento|default:'#d4af37' }}",
+        color: esActual ? "#ffffff" : (alcanzado ? "#166534" : colorAcento),
+        fillColor: alcanzado ? "#16a34a" : colorAcento,
         radius: esActual ? 11 : 8,
         weight: esActual ? 4 : 2,
       });
     });
   }
 
+  function actualizarProgresoTurnos(progreso) {
+    const alcanzados = new Set(progreso.turnos_alcanzados_ids || []);
+    turnos.forEach(turno => {
+      turno.alcanzado_en = alcanzados.has(turno.id) ? (turno.alcanzado_en || "alcanzado") : null;
+    });
+    actualizarMarcadorTurno(null);
+  }
+
+  const turnosInicialesAlcanzados = turnos.filter(turno => turno.alcanzado_en);
+  if (turnosInicialesAlcanzados.length) {
+    turnoActualGpsId = turnosInicialesAlcanzados[turnosInicialesAlcanzados.length - 1].id;
+  }
+
   turnos.forEach(turno => {
     const popupHtml = `
       <div>
-        <div class="popup-title">${turno.titulo}</div>
+        <div class="popup-title">${turno.titulo || `Turno ${turno.numero}`}</div>
         <div><strong>Pieza:</strong> ${turno.pieza || "--"}</div>
-        <div><strong>Género:</strong> ${turno.genero || "--"}</div>
+        ${turno.genero ? `<div><strong>Género:</strong> ${turno.genero}</div>` : ""}
         <div><strong>Compositor:</strong> ${turno.compositor || "--"}</div>
         <div><strong>Dirección:</strong> ${turno.direccion || "--"}</div>
       </div>
@@ -312,8 +499,8 @@
 
     const marker = L.circleMarker(turno.coords, {
       radius: 8,
-      color: "{{ h.color_acento|default:'#d4af37' }}",
-      fillColor: "{{ h.color_acento|default:'#d4af37' }}",
+      color: colorAcento,
+      fillColor: colorAcento,
       fillOpacity: 0.95,
       weight: 2,
     }).addTo(map).bindPopup(popupHtml);
@@ -324,6 +511,10 @@
       actualizarPanel(turno);
     });
   });
+  actualizarMarcadorTurno(null);
+  if (turnosInicialesAlcanzados.length) {
+    actualizarPanel(turnosInicialesAlcanzados[turnosInicialesAlcanzados.length - 1]);
+  }
 
   let marcadorActual = null;
 
@@ -342,53 +533,21 @@
     marcadorActual.bindPopup(nombreDispositivo || "Ubicación actual del cortejo");
   }
 
-  function distanciaHaversineMetros(a, b) {
-    const radioTierra = 6371000;
-    const aRad = a[0] * Math.PI / 180;
-    const bRad = b[0] * Math.PI / 180;
-    const deltaLat = (b[0] - a[0]) * Math.PI / 180;
-    const deltaLng = (b[1] - a[1]) * Math.PI / 180;
-    const hav = Math.sin(deltaLat / 2) ** 2
-      + Math.cos(aRad) * Math.cos(bRad) * Math.sin(deltaLng / 2) ** 2;
-    return radioTierra * 2 * Math.atan2(Math.sqrt(hav), Math.sqrt(1 - hav));
-  }
-
-  function turnoDetectadoPorGps(lat, lng) {
-    let mejor = null;
-    let mejorDistancia = Infinity;
-
-    turnos.forEach(turno => {
-      const d = distanciaHaversineMetros([lat, lng], turno.coords);
-      if (d <= DISTANCIA_DETECCION_TURNO_METROS && d < mejorDistancia) {
-        mejorDistancia = d;
-        mejor = turno;
-      }
-    });
-
-    return mejor;
-  }
-
   async function actualizarGps() {
     try {
       const response = await fetch("{% url 'web:api_ubicacion' h.slug %}");
       const data = await response.json();
 
       if (data.ok && data.latitude != null && data.longitude != null) {
-        asegurarMarcadorActual(data.latitude, data.longitude, data.deviceName);
+        asegurarMarcadorActual(data.latitude, data.longitude, "Ubicación actual del cortejo");
         document.getElementById("estadoGps").textContent = "Ubicación en vivo activa";
-        document.getElementById("horaGps").textContent = data.deviceTime || data.serverTime || "--";
+        const actualizada = data.updatedAt ? new Date(data.updatedAt) : null;
+        document.getElementById("horaGps").textContent = actualizada && !Number.isNaN(actualizada.getTime())
+          ? actualizada.toLocaleString("es-GT")
+          : "--";
 
-        const precisionReportada = Number(data.accuracy);
-        const precisionAceptable = Number.isFinite(precisionReportada)
-          && precisionReportada <= PRECISION_GPS_MAXIMA_METROS;
-        if (!precisionAceptable) {
-          document.getElementById("estadoGps").textContent = (
-            "Esperando precisión GPS de 5 m o mejor"
-          );
-          return;
-        }
-
-        const turno = turnoDetectadoPorGps(data.latitude, data.longitude);
+        actualizarProgresoTurnos(data);
+        const turno = turnos.find(item => item.id === data.turno_detectado_id);
         if (turno) {
           actualizarMarcadorTurno(turno);
           actualizarPanel(turno, true);
@@ -406,7 +565,9 @@
     actualizarGps();
     setInterval(actualizarGps, 8000);
   } else {
-    document.getElementById("estadoGps").textContent = "Seguimiento GPS no configurado";
+    document.getElementById("estadoGps").textContent = gpsConfigurado
+      ? "Seguimiento fuera del horario público"
+      : "Seguimiento GPS no configurado";
   }
 
   function copiarEnlace() {

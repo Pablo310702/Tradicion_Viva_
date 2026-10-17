@@ -1,7 +1,12 @@
 import json
+import os
 from datetime import date, timedelta
+from unittest.mock import patch
 
+from django.core import mail
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.db import connection
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -12,6 +17,7 @@ from hermandades.models import (
     Devoto,
     EventoAgenda,
     Hermandad,
+    InscripcionTurno,
     ImagenHermandad,
     TurnoRecorrido,
 )
@@ -61,6 +67,58 @@ class AuthenticationApiTests(BaseProjectTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["user"]["email"], "devoto@example.com")
+
+    def test_refresh_rotates_token_and_rejects_replay(self):
+        login = self.client.post(
+            reverse("web:api_auth_login"),
+            data=json.dumps({"email": "devoto@example.com", "password": "ClaveSegura123"}),
+            content_type="application/json",
+        )
+        old_refresh = login.json()["tokens"]["refreshToken"]
+
+        refreshed = self.client.post(
+            reverse("web:api_auth_refresh"),
+            data=json.dumps({"refreshToken": old_refresh}),
+            content_type="application/json",
+        )
+        self.assertEqual(refreshed.status_code, 200)
+        self.assertNotEqual(refreshed.json()["tokens"]["refreshToken"], old_refresh)
+
+        replay = self.client.post(
+            reverse("web:api_auth_refresh"),
+            data=json.dumps({"refreshToken": old_refresh}),
+            content_type="application/json",
+        )
+        self.assertEqual(replay.status_code, 401)
+
+    def test_logout_revokes_api_session(self):
+        login = self.client.post(
+            reverse("web:api_auth_login"),
+            data=json.dumps({"email": "devoto@example.com", "password": "ClaveSegura123"}),
+            content_type="application/json",
+        )
+        tokens = login.json()["tokens"]
+
+        logout = self.client.post(
+            reverse("web:api_auth_logout"),
+            HTTP_AUTHORIZATION=f"Bearer {tokens['accessToken']}",
+        )
+        self.assertEqual(logout.status_code, 200)
+        self.assertEqual(
+            self.client.get(
+                reverse("web:api_auth_me"),
+                HTTP_AUTHORIZATION=f"Bearer {tokens['accessToken']}",
+            ).status_code,
+            401,
+        )
+        self.assertEqual(
+            self.client.post(
+                reverse("web:api_auth_refresh"),
+                data=json.dumps({"refreshToken": tokens["refreshToken"]}),
+                content_type="application/json",
+            ).status_code,
+            401,
+        )
 
 
 class OrganizationIsolationTests(TestCase):
@@ -120,6 +178,30 @@ class OrganizationIsolationTests(TestCase):
             reverse("admin:index"),
         )
 
+    def test_postgresql_rls_filters_rows_at_database_layer(self):
+        if connection.vendor != "postgresql":
+            self.skipTest("Row-level security se valida con PostgreSQL en CI.")
+        role = os.environ.get("RLS_TEST_ROLE", "").strip()
+        if not role:
+            self.skipTest("Configura RLS_TEST_ROLE con un rol PostgreSQL sin BYPASSRLS.")
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"GRANT SELECT ON hermandades_eventoagenda TO {connection.ops.quote_name(role)}"
+            )
+            cursor.execute(f"SET ROLE {connection.ops.quote_name(role)}")
+            cursor.execute(
+                "SELECT set_config('app.current_organization_id', %s, false)",
+                [str(self.organization_a.pk)],
+            )
+        try:
+            self.assertTrue(EventoAgenda.objects.filter(pk=self.event_a.pk).exists())
+            self.assertFalse(EventoAgenda.objects.filter(pk=self.event_b.pk).exists())
+        finally:
+            with connection.cursor() as cursor:
+                cursor.execute("RESET ROLE")
+                cursor.execute("SELECT set_config('app.current_organization_id', '', false)")
+
 
 class PublicViewsTests(BaseProjectTestCase):
     def test_home_lists_active_organizations(self):
@@ -172,6 +254,28 @@ class PublicViewsTests(BaseProjectTestCase):
         self.assertEqual(configured.traccar_device_id, "98765")
         self.assertEqual(configured.nombre_dispositivo_gps, "Teltonika procesión")
 
+    def test_gps_publication_requires_a_valid_event_window(self):
+        self.hermandad.gps_activo = True
+        self.hermandad.gps_publico = True
+        self.hermandad.traccar_device_id = "98765"
+        with self.assertRaisesMessage(Exception, "Define el inicio y el fin"):
+            self.hermandad.full_clean()
+
+        self.hermandad.gps_publicacion_desde = timezone.now() + timedelta(hours=1)
+        self.hermandad.gps_publicacion_hasta = timezone.now()
+        with self.assertRaisesMessage(Exception, "El fin debe ser posterior"):
+            self.hermandad.full_clean()
+
+    @override_settings(GPS_API_RATE_LIMIT_PER_MINUTE=1)
+    def test_gps_api_limits_requests_per_client(self):
+        cache.clear()
+        url = reverse("web:api_ubicacion", kwargs={"slug": self.hermandad.slug})
+        self.assertEqual(self.client.get(url).status_code, 200)
+        limited = self.client.get(url)
+        self.assertEqual(limited.status_code, 429)
+        self.assertEqual(limited["Retry-After"], "60")
+        cache.clear()
+
     def test_traccar_device_id_puede_compartirse(self):
         """Varias hermandades pueden apuntar al mismo dispositivo de Traccar."""
         from hermandades.models import Hermandad
@@ -199,8 +303,20 @@ class PublicViewsTests(BaseProjectTestCase):
         from unittest.mock import Mock, patch
 
         self.hermandad.gps_activo = True
+        self.hermandad.gps_publico = True
+        self.hermandad.gps_publicacion_desde = timezone.now() - timedelta(minutes=1)
+        self.hermandad.gps_publicacion_hasta = timezone.now() + timedelta(hours=1)
         self.hermandad.traccar_device_id = "81709810"
         self.hermandad.save()
+        turno = TurnoRecorrido.objects.create(
+            hermandad=self.hermandad,
+            numero=1,
+            nombre_turno="Turno inicial",
+            pieza="Marcha de prueba",
+            latitud=14.5566,
+            longitud=-90.7332,
+            orden_ruta=1,
+        )
 
         login = Mock(status_code=200)
         login.raise_for_status.return_value = None
@@ -213,7 +329,7 @@ class PublicViewsTests(BaseProjectTestCase):
             "deviceId": 42,
             "latitude": 14.5566,
             "longitude": -90.7332,
-            "deviceTime": "2026-08-18T18:00:00Z",
+            "deviceTime": timezone.now().isoformat(),
         }]
 
         fake_session = Mock()
@@ -225,8 +341,147 @@ class PublicViewsTests(BaseProjectTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["ok"])
-        self.assertEqual(response.json()["identifier"], "81709810")
-        self.assertEqual(response.json()["deviceName"], "Teléfono Procesión")
+        self.assertIn("updatedAt", response.json())
+        self.assertEqual(response.json()["turno_detectado_id"], turno.pk)
+        self.assertEqual(response.json()["turnos_alcanzados_ids"], [turno.pk])
+        self.assertNotIn("identifier", response.json())
+        self.assertNotIn("deviceName", response.json())
+
+    def test_gps_marks_next_turn_in_order_and_requires_leaving_previous_stop(self):
+        from web.views import _actualizar_progreso_turnos_gps
+
+        primer_turno = TurnoRecorrido.objects.create(
+            hermandad=self.hermandad,
+            numero=1,
+            nombre_turno="Turno 1",
+            pieza="Primera marcha",
+            latitud=14.5566,
+            longitud=-90.7332,
+            orden_ruta=1,
+        )
+        segundo_turno = TurnoRecorrido.objects.create(
+            hermandad=self.hermandad,
+            numero=2,
+            nombre_turno="Turno 2",
+            pieza="Segunda marcha",
+            latitud=14.5576,
+            longitud=-90.7332,
+            orden_ruta=2,
+        )
+        tiempo = timezone.now()
+
+        fuera_de_orden = _actualizar_progreso_turnos_gps(
+            self.hermandad,
+            segundo_turno.latitud,
+            segundo_turno.longitud,
+            tiempo,
+            None,
+        )
+        self.assertEqual(fuera_de_orden["turnos_alcanzados_ids"], [])
+
+        llegada_inicial = _actualizar_progreso_turnos_gps(
+            self.hermandad,
+            primer_turno.latitud,
+            primer_turno.longitud,
+            tiempo + timedelta(seconds=30),
+            None,
+        )
+        self.assertEqual(llegada_inicial["turnos_alcanzados_ids"], [primer_turno.pk])
+
+        misma_parada = _actualizar_progreso_turnos_gps(
+            self.hermandad,
+            primer_turno.latitud,
+            primer_turno.longitud,
+            tiempo + timedelta(minutes=1),
+            None,
+        )
+        self.assertEqual(misma_parada["turnos_alcanzados_ids"], [primer_turno.pk])
+
+        _actualizar_progreso_turnos_gps(
+            self.hermandad,
+            14.5570,
+            -90.7332,
+            tiempo + timedelta(minutes=2),
+            None,
+        )
+        llegada_siguiente = _actualizar_progreso_turnos_gps(
+            self.hermandad,
+            segundo_turno.latitud,
+            segundo_turno.longitud,
+            tiempo + timedelta(minutes=3),
+            None,
+        )
+        self.assertEqual(
+            llegada_siguiente["turnos_alcanzados_ids"],
+            [primer_turno.pk, segundo_turno.pk],
+        )
+        self.assertEqual(llegada_siguiente["turno_detectado_id"], segundo_turno.pk)
+
+    def test_gps_does_not_process_the_same_position_twice(self):
+        from web.views import _actualizar_progreso_turnos_gps
+
+        turno = TurnoRecorrido.objects.create(
+            hermandad=self.hermandad,
+            numero=1,
+            nombre_turno="Turno 1",
+            pieza="Marcha de prueba",
+            latitud=14.5566,
+            longitud=-90.7332,
+            orden_ruta=1,
+        )
+        tiempo = timezone.now()
+
+        primera_consulta = _actualizar_progreso_turnos_gps(
+            self.hermandad,
+            turno.latitud,
+            turno.longitud,
+            tiempo,
+            None,
+        )
+        repetida = _actualizar_progreso_turnos_gps(
+            self.hermandad,
+            turno.latitud,
+            turno.longitud,
+            tiempo,
+            None,
+        )
+
+        self.assertEqual(primera_consulta["turnos_alcanzados_ids"], [turno.pk])
+        self.assertEqual(repetida["turnos_alcanzados_ids"], [turno.pk])
+        turno.refresh_from_db()
+        self.assertEqual(turno.alcanzado_en, tiempo)
+
+    def test_gps_rechecks_same_position_when_turn_is_added_afterward(self):
+        from web.views import _actualizar_progreso_turnos_gps
+
+        tiempo = timezone.now()
+        _actualizar_progreso_turnos_gps(
+            self.hermandad,
+            14.5566,
+            -90.7332,
+            tiempo,
+            None,
+        )
+        turno = TurnoRecorrido.objects.create(
+            hermandad=self.hermandad,
+            numero=1,
+            nombre_turno="Turno 1",
+            pieza="Marcha inicial",
+            latitud=14.5566,
+            longitud=-90.7332,
+            orden_ruta=1,
+        )
+
+        progreso = _actualizar_progreso_turnos_gps(
+            self.hermandad,
+            turno.latitud,
+            turno.longitud,
+            tiempo,
+            None,
+        )
+
+        self.assertEqual(progreso["turno_detectado_id"], turno.pk)
+        self.assertEqual(progreso["turnos_alcanzados_ids"], [turno.pk])
 
     def test_section_menu_keeps_live_tracking_link(self):
         response = self.client.get(
@@ -245,7 +500,7 @@ class PublicViewsTests(BaseProjectTestCase):
         TurnoRecorrido.objects.create(
             hermandad=self.hermandad,
             numero=1,
-            nombre_turno="Turno inicial",
+            nombre_turno="1",
             pieza="Marcha de prueba",
             latitud=14.5566,
             longitud=-90.7332,
@@ -258,8 +513,95 @@ class PublicViewsTests(BaseProjectTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="datoGenero" hidden')
+        self.assertContains(response, '${turno.genero ?')
+        self.assertNotContains(response, 'Género:</strong> ${turno.genero || "--"}')
         self.assertContains(response, "const DISTANCIA_DETECCION_TURNO_METROS = 5")
         self.assertNotContains(response, "turnoMasCercano")
+        self.assertEqual(response.context["turnos_data"][0]["titulo"], "Turno 1")
+
+    def test_tracking_keeps_distinct_turn_name_with_number(self):
+        for numero, nombre in ((1, "Entrada"), (2, "Turno 2")):
+            TurnoRecorrido.objects.create(
+                hermandad=self.hermandad,
+                numero=numero,
+                nombre_turno=nombre,
+                pieza="Marcha de prueba",
+                latitud=14.55 + numero / 1000,
+                longitud=-90.7332,
+                orden_ruta=numero,
+            )
+
+        response = self.client.get(
+            reverse("web:seguimiento", kwargs={"slug": self.hermandad.slug})
+        )
+
+        self.assertEqual(
+            [turno["titulo"] for turno in response.context["turnos_data"]],
+            ["Turno 1 · Entrada", "Turno 2"],
+        )
+
+    def test_tracking_route_uses_turn_number_before_point_order(self):
+        for numero, orden_ruta, latitud in (
+            (10, 1, 14.10),
+            (11, 2, 14.11),
+            (1, 11, 14.01),
+        ):
+            TurnoRecorrido.objects.create(
+                hermandad=self.hermandad,
+                numero=numero,
+                nombre_turno=f"Turno {numero}",
+                pieza="Marcha de prueba",
+                latitud=latitud,
+                longitud=-90.7332,
+                orden_ruta=orden_ruta,
+            )
+
+        response = self.client.get(
+            reverse("web:seguimiento", kwargs={"slug": self.hermandad.slug})
+        )
+
+        self.assertEqual(
+            [turno["numero"] for turno in response.context["turnos_data"]],
+            [1, 10, 11],
+        )
+        self.assertEqual(
+            response.context["ruta_coords"],
+            [[14.01, -90.7332], [14.10, -90.7332], [14.11, -90.7332]],
+        )
+
+    def test_tracking_uses_edited_route_line_when_available(self):
+        TurnoRecorrido.objects.create(
+            hermandad=self.hermandad,
+            numero=1,
+            nombre_turno="Turno inicial",
+            pieza="Marcha de prueba",
+            latitud=14.55,
+            longitud=-90.73,
+            orden_ruta=1,
+        )
+        trazado = [[14.55, -90.73], [14.555, -90.735], [14.56, -90.74]]
+        self.hermandad.ruta_trazado = trazado
+        self.hermandad.save(update_fields=["ruta_trazado"])
+
+        response = self.client.get(
+            reverse("web:seguimiento", kwargs={"slug": self.hermandad.slug})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["ruta_trazado"], trazado)
+        self.assertContains(response, 'id="ruta-trazado-data"')
+
+    def test_tracking_hides_saved_route_when_no_active_turns_remain(self):
+        self.hermandad.ruta_trazado = [[14.55, -90.73], [14.56, -90.74]]
+        self.hermandad.save(update_fields=["ruta_trazado"])
+
+        response = self.client.get(
+            reverse("web:seguimiento", kwargs={"slug": self.hermandad.slug})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["ruta_trazado"], [])
+        self.assertContains(response, '<script id="ruta-trazado-data" type="application/json">[]</script>')
 
     def test_agenda_only_exposes_active_events(self):
         now = timezone.now()
@@ -325,6 +667,84 @@ class PublicViewsTests(BaseProjectTestCase):
         self.assertEqual(devoto.dpi, payload["dpi"])
         self.assertEqual(float(devoto.medida_hombro_cm), 148.0)
 
+    def test_receipt_requires_the_owning_devoto_session(self):
+        owner = CuentaDevoto.objects.create(correo="owner@example.com")
+        devoto = Devoto.objects.create(
+            cuenta=owner,
+            hermandad=self.hermandad,
+            dpi="1234567890101",
+            primer_nombre="Ana",
+            primer_apellido="Prueba",
+            fecha_nacimiento=date(1995, 8, 5),
+            departamento="Sacatepéquez",
+            municipio="Antigua Guatemala",
+            celular="55555555",
+            correo=owner.correo,
+            acepta_privacidad=True,
+        )
+        receipt_url = reverse(
+            "web:comprobante_devoto",
+            kwargs={"slug": self.hermandad.slug, "codigo": devoto.comprobante_codigo},
+        )
+
+        self.assertEqual(self.client.get(receipt_url).status_code, 404)
+
+        other = CuentaDevoto.objects.create(correo="other@example.com")
+        session = self.client.session
+        session["cuenta_devoto_id"] = other.pk
+        session.save()
+        self.assertEqual(self.client.get(receipt_url).status_code, 404)
+
+        session = self.client.session
+        session["cuenta_devoto_id"] = owner.pk
+        session.save()
+        response = self.client.get(receipt_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.content.startswith(b"%PDF"))
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_registration_emails_pdf_and_sends_whatsapp_when_authorized(self):
+        payload = {
+            "dpi": "1234567890101",
+            "primer_nombre": "Ana",
+            "primer_apellido": "López",
+            "dia": "5",
+            "mes": "8",
+            "anio": "1995",
+            "departamento": "Sacatepéquez",
+            "municipio": "Antigua Guatemala",
+            "celular": "5555-5555",
+            "correo": "ana@example.com",
+            "correo2": "ana@example.com",
+            "password1": "ClaveSegura123",
+            "password2": "ClaveSegura123",
+            "acepta_privacidad": "on",
+            "acepta_email": "on",
+            "acepta_whatsapp": "on",
+            "website": "",
+        }
+        with patch("web.views.send_whatsapp_document_template") as send_whatsapp:
+            response = self.client.post(
+                reverse(
+                    "web:seccion_generica",
+                    kwargs={
+                        "slug": self.hermandad.slug,
+                        "seccion": "registro-actualizacion-datos",
+                    },
+                ),
+                payload,
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(mail.outbox), 1)
+        attachment = mail.outbox[0].attachments[0]
+        self.assertEqual(attachment[0].split(".")[-1], "pdf")
+        self.assertEqual(attachment[2], "application/pdf")
+        self.assertTrue(attachment[1].startswith(b"%PDF"))
+        send_whatsapp.assert_called_once()
+        self.assertEqual(send_whatsapp.call_args.args[0], "+50255555555")
+        self.assertTrue(send_whatsapp.call_args.args[1].startswith(b"%PDF"))
+
     def test_registration_form_has_no_gender_and_uses_centimeters(self):
         response = self.client.get(
             reverse(
@@ -372,6 +792,272 @@ class PublicViewsTests(BaseProjectTestCase):
         self.assertFalse(Devoto.objects.exists())
 
 
+class InscripcionesTurnosTests(BaseProjectTestCase):
+    def setUp(self):
+        super().setUp()
+        self.user = get_user_model().objects.create_user(
+            username="admin-turnos",
+            password="ClaveSegura123",
+            is_staff=True,
+        )
+        AdministradorOrganizacion.objects.create(
+            usuario=self.user,
+            hermandad=self.hermandad,
+        )
+        self.client.force_login(self.user)
+        self.devoto = Devoto.objects.create(
+            hermandad=self.hermandad,
+            dpi="1234567890101",
+            primer_nombre="Ana",
+            primer_apellido="Prueba",
+            fecha_nacimiento=date(1995, 8, 5),
+            departamento="Sacatepéquez",
+            municipio="Antigua Guatemala",
+            celular="55555555",
+            correo="ana@example.com",
+            acepta_privacidad=True,
+            acepta_email=True,
+        )
+        self.turnos = [
+            TurnoRecorrido.objects.create(
+                hermandad=self.hermandad,
+                numero=numero,
+                nombre_turno=f"Turno {numero}",
+                pieza=f"Marcha {numero}",
+                latitud=14.55,
+                longitud=-90.73,
+                orden_ruta=numero,
+            )
+            for numero in (1, 2)
+        ]
+        self.url = reverse(
+            "web:inscripciones_turnos",
+            kwargs={"slug": self.hermandad.slug},
+        )
+
+    def test_staff_can_register_multiple_turns_for_one_devoto(self):
+        response = self.client.post(
+            self.url,
+            {
+                "devoto_id": self.devoto.pk,
+                "turno_ids": [turno.pk for turno in self.turnos],
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(InscripcionTurno.objects.filter(devoto=self.devoto).count(), 2)
+        self.assertTrue(
+            InscripcionTurno.objects.filter(
+                devoto=self.devoto,
+                inscrito_por=self.user,
+            ).exists()
+        )
+
+    def test_duplicate_turn_registration_does_not_create_a_second_record(self):
+        InscripcionTurno.objects.create(devoto=self.devoto, turno=self.turnos[0])
+
+        self.client.post(
+            self.url,
+            {
+                "devoto_id": self.devoto.pk,
+                "turno_ids": [self.turnos[0].pk],
+            },
+        )
+
+        self.assertEqual(InscripcionTurno.objects.filter(devoto=self.devoto).count(), 1)
+
+    def test_staff_cannot_register_a_devoto_from_another_organization(self):
+        otra = Hermandad.objects.create(nombre="Otra", slug="otra")
+        devoto_ajeno = Devoto.objects.create(
+            hermandad=otra,
+            dpi="1234567890102",
+            primer_nombre="Luis",
+            primer_apellido="Ajeno",
+            fecha_nacimiento=date(1995, 8, 5),
+            departamento="Sacatepéquez",
+            municipio="Antigua Guatemala",
+            celular="55555556",
+            correo="luis@example.com",
+            acepta_privacidad=True,
+        )
+
+        response = self.client.post(
+            self.url,
+            {
+                "devoto_id": devoto_ajeno.pk,
+                "turno_ids": [self.turnos[0].pk],
+            },
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(InscripcionTurno.objects.exists())
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_delivery_is_audited_and_notifies_once_by_email(self):
+        inscripcion = InscripcionTurno.objects.create(
+            devoto=self.devoto,
+            turno=self.turnos[0],
+        )
+        url = reverse(
+            "web:entregar_turno",
+            kwargs={
+                "slug": self.hermandad.slug,
+                "inscripcion_id": inscripcion.pk,
+            },
+        )
+
+        first_response = self.client.post(url)
+        inscripcion.refresh_from_db()
+        entrega_registrada_en = inscripcion.entregado_en
+        second_response = self.client.post(url)
+
+        self.assertEqual(first_response.status_code, 302)
+        self.assertEqual(second_response.status_code, 302)
+        self.assertTrue(inscripcion.entregado)
+        self.assertEqual(inscripcion.entregado_por, self.user)
+        self.assertIsNotNone(entrega_registrada_en)
+        self.assertEqual(mail.outbox.__len__(), 1)
+        self.assertIn("Turno 1", mail.outbox[0].body)
+
+    def test_staff_can_remove_delivered_enrollment(self):
+        inscripcion = InscripcionTurno.objects.create(
+            devoto=self.devoto,
+            turno=self.turnos[0],
+            entregado=True,
+            entregado_en=timezone.now(),
+            entregado_por=self.user,
+        )
+        response = self.client.get(
+            self.url,
+            {"codigo": self.devoto.comprobante_codigo},
+        )
+        self.assertContains(response, "Eliminar registro")
+
+        clear_url = reverse(
+            "web:limpiar_entrega_turno",
+            kwargs={
+                "slug": self.hermandad.slug,
+                "inscripcion_id": inscripcion.pk,
+            },
+        )
+        response = self.client.post(clear_url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(InscripcionTurno.objects.filter(pk=inscripcion.pk).exists())
+
+    def test_clear_delivery_does_not_remove_pending_enrollment(self):
+        inscripcion = InscripcionTurno.objects.create(
+            devoto=self.devoto,
+            turno=self.turnos[0],
+        )
+        clear_url = reverse(
+            "web:limpiar_entrega_turno",
+            kwargs={
+                "slug": self.hermandad.slug,
+                "inscripcion_id": inscripcion.pk,
+            },
+        )
+
+        response = self.client.post(clear_url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(InscripcionTurno.objects.filter(pk=inscripcion.pk).exists())
+
+    def test_scanning_qr_opens_staff_delivery_page_but_public_scan_stays_public(self):
+        qr_url = reverse(
+            "web:qr_devoto",
+            kwargs={"codigo": self.devoto.comprobante_codigo},
+        )
+
+        staff_response = self.client.get(qr_url)
+        self.assertEqual(staff_response.status_code, 302)
+        self.assertIn(self.url, staff_response.url)
+        self.assertIn(str(self.devoto.comprobante_codigo), staff_response.url)
+
+        self.client.logout()
+        public_response = self.client.get(qr_url)
+        self.assertRedirects(
+            public_response,
+            reverse("web:hermandad_detalle", kwargs={"slug": self.hermandad.slug}),
+        )
+
+    def test_non_staff_cannot_access_registration_management(self):
+        self.client.logout()
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("web:administrativo_login"), response.url)
+
+    def test_registration_page_uses_organization_assigned_colors(self):
+        self.hermandad.color_primario = "#4F7A5A"
+        self.hermandad.color_acento = "#568765"
+        self.hermandad.save(update_fields=["color_primario", "color_acento"])
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "--theme-header:#4F7A5A")
+        self.assertContains(response, "--theme-topbar:#568765")
+        self.assertContains(response, "--theme-button:#568765")
+
+    def test_admin_page_provides_scanner_and_manual_devoto_search(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="openScanner"')
+        self.assertContains(response, 'id="scannerVideo"')
+        self.assertContains(response, "/static/web/vendor/jsQR.js")
+        self.assertContains(response, "window.jsQR(image.data")
+        self.assertContains(response, "Buscar devoto")
+        self.assertContains(response, "Primero escanea el comprobante")
+
+    def test_manual_search_finds_devoto_and_offers_turn_assignment(self):
+        response = self.client.get(self.url, {"q": "ana"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.devoto.nombre_completo)
+        self.assertContains(response, "Ver devoto y sus turnos")
+        self.assertContains(response, str(self.devoto.comprobante_codigo))
+
+    def test_selected_devoto_has_individual_turn_assignment_form(self):
+        response = self.client.get(
+            self.url,
+            {"codigo": self.devoto.comprobante_codigo},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.devoto.nombre_completo)
+        self.assertContains(response, "name=\"devoto_id\"")
+        for turno in self.turnos:
+            self.assertContains(response, f'value="{turno.pk}"')
+
+    def test_devoto_panel_lists_registered_turns_and_delivery_state(self):
+        cuenta = CuentaDevoto.objects.create(correo=self.devoto.correo)
+        self.devoto.cuenta = cuenta
+        self.devoto.save(update_fields=["cuenta"])
+        InscripcionTurno.objects.create(
+            devoto=self.devoto,
+            turno=self.turnos[0],
+            entregado=True,
+            entregado_en=timezone.now(),
+        )
+        InscripcionTurno.objects.create(
+            devoto=self.devoto,
+            turno=self.turnos[1],
+        )
+        session = self.client.session
+        session["cuenta_devoto_id"] = cuenta.pk
+        session.save()
+
+        response = self.client.get(reverse("web:devoto_panel"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Mis turnos")
+        self.assertContains(response, "Entregado el")
+        self.assertContains(response, "Pendiente de entrega")
+
+
 class AdminOnlyEditorTests(BaseProjectTestCase):
     def test_editor_redirects_anonymous_user_to_admin_login(self):
         response = self.client.get(reverse("web:editor_turnos", kwargs={"slug": self.hermandad.slug}))
@@ -394,10 +1080,280 @@ class AdminOnlyEditorTests(BaseProjectTestCase):
             latitud=14.55,
             longitud=-90.73,
             orden_ruta=1,
+            alcanzado_en=timezone.now(),
         )
         response = self.client.get(reverse("web:editor_turnos", kwargs={"slug": self.hermandad.slug}))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Editor de turnos")
+        self.assertContains(response, 'id="mapaEditor"')
+        self.assertContains(response, 'name="numero"')
+        self.assertContains(response, "draggable: true")
+        self.assertContains(response, "function obtenerTurnoEnPunto")
+        self.assertContains(response, 'marker.on("dragend"')
+        self.assertNotContains(response, "Preparar turnos desde archivos")
+        self.assertContains(response, "Cada arrastre crea como máximo un punto ajustable")
+        self.assertContains(response, "simplificarRuta")
+        self.assertContains(response, "function continuarArrastreLinea")
+        self.assertContains(response, "Guardar línea")
+        self.assertContains(response, "iniciarArrastreLinea")
+        self.assertContains(response, 'id="turnoCambioDireccion"')
+        self.assertContains(response, "#2563eb")
+        self.assertContains(response, "#dc2626")
+        self.assertContains(response, "Avance automático por GPS")
+        self.assertContains(response, "Reiniciar progreso GPS")
+
+    def test_staff_can_save_edited_route_line(self):
+        user = get_user_model().objects.create_user(
+            username="staff-rutas",
+            password="staff-route-test",
+            is_staff=True,
+        )
+        AdministradorOrganizacion.objects.create(usuario=user, hermandad=self.hermandad)
+        self.client.force_login(user)
+
+        TurnoRecorrido.objects.create(
+            hermandad=self.hermandad,
+            numero=2,
+            nombre_turno="Turno de retorno",
+            pieza="Marcha",
+            latitud=14.56,
+            longitud=-90.74,
+            orden_ruta=0,
+        )
+        trazado = [[14.55, -90.73], [14.555, -90.735], [14.56, -90.74]]
+        response = self.client.post(
+            reverse("web:editor_turnos", kwargs={"slug": self.hermandad.slug}),
+            {
+                "action": "guardar_trazado",
+                "ruta_trazado": json.dumps(trazado),
+                "turno_cambio_direccion": "2",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("web:editor_turnos", kwargs={"slug": self.hermandad.slug}),
+        )
+        self.hermandad.refresh_from_db()
+        self.assertEqual(self.hermandad.ruta_trazado, trazado)
+        self.assertEqual(self.hermandad.turno_cambio_direccion, 2)
+
+    def test_moving_turn_updates_its_route_vertex_without_changing_other_points(self):
+        user = get_user_model().objects.create_user(
+            username="staff-mover-turno",
+            password="staff-route-test",
+            is_staff=True,
+        )
+        AdministradorOrganizacion.objects.create(usuario=user, hermandad=self.hermandad)
+        self.client.force_login(user)
+        turno = TurnoRecorrido.objects.create(
+            hermandad=self.hermandad,
+            numero=1,
+            nombre_turno="Turno 1",
+            pieza="Marcha",
+            latitud=14.55,
+            longitud=-90.73,
+            orden_ruta=0,
+        )
+        punto_intermedio = [14.555, -90.735]
+        self.hermandad.ruta_trazado = [[14.55, -90.73], punto_intermedio, [14.56, -90.74]]
+        self.hermandad.save(update_fields=["ruta_trazado"])
+
+        response = self.client.post(
+            reverse("web:editor_turnos", kwargs={"slug": self.hermandad.slug}),
+            {
+                "turno_id": turno.id,
+                "numero": 1,
+                "orden_ruta": 0,
+                "nombre_turno": "Turno 1",
+                "pieza": "Marcha",
+                "latitud": 14.551,
+                "longitud": -90.731,
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("web:editor_turnos", kwargs={"slug": self.hermandad.slug}),
+        )
+        turno.refresh_from_db()
+        self.hermandad.refresh_from_db()
+        self.assertEqual((turno.latitud, turno.longitud), (14.551, -90.731))
+        self.assertEqual(
+            self.hermandad.ruta_trazado,
+            [[14.551, -90.731], punto_intermedio, [14.56, -90.74]],
+        )
+
+    def test_staff_cannot_save_route_with_unknown_direction_change_turn(self):
+        user = get_user_model().objects.create_user(
+            username="staff-cambio-invalido",
+            password="ClaveSegura123",
+            is_staff=True,
+        )
+        AdministradorOrganizacion.objects.create(usuario=user, hermandad=self.hermandad)
+        self.client.force_login(user)
+        trazado = [[14.55, -90.73], [14.56, -90.74]]
+
+        response = self.client.post(
+            reverse("web:editor_turnos", kwargs={"slug": self.hermandad.slug}),
+            {
+                "action": "guardar_trazado",
+                "ruta_trazado": json.dumps(trazado),
+                "turno_cambio_direccion": "99",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("web:editor_turnos", kwargs={"slug": self.hermandad.slug}),
+        )
+        self.hermandad.refresh_from_db()
+        self.assertEqual(self.hermandad.ruta_trazado, [])
+        self.assertIsNone(self.hermandad.turno_cambio_direccion)
+
+    def test_deleting_last_turn_clears_saved_route_line(self):
+        user = get_user_model().objects.create_user(
+            username="staff-limpiar-ruta",
+            password="staff-route-test",
+            is_staff=True,
+        )
+        AdministradorOrganizacion.objects.create(usuario=user, hermandad=self.hermandad)
+        self.client.force_login(user)
+        turno = TurnoRecorrido.objects.create(
+            hermandad=self.hermandad,
+            numero=1,
+            nombre_turno="Turno final",
+            pieza="Marcha de prueba",
+            latitud=14.55,
+            longitud=-90.73,
+            orden_ruta=1,
+        )
+        self.hermandad.ruta_trazado = [[14.55, -90.73], [14.56, -90.74]]
+        self.hermandad.turno_cambio_direccion = 1
+        self.hermandad.save(update_fields=["ruta_trazado", "turno_cambio_direccion"])
+
+        response = self.client.post(
+            reverse(
+                "web:eliminar_turno",
+                kwargs={"slug": self.hermandad.slug, "turno_id": turno.pk},
+            )
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("web:editor_turnos", kwargs={"slug": self.hermandad.slug}),
+        )
+        self.hermandad.refresh_from_db()
+        self.assertEqual(self.hermandad.ruta_trazado, [])
+        self.assertIsNone(self.hermandad.turno_cambio_direccion)
+        self.assertFalse(TurnoRecorrido.objects.filter(hermandad=self.hermandad).exists())
+
+    def test_staff_can_reset_gps_turn_progress(self):
+        user = get_user_model().objects.create_user(
+            username="staff-reiniciar-gps",
+            password="ClaveSegura123",
+            is_staff=True,
+        )
+        AdministradorOrganizacion.objects.create(usuario=user, hermandad=self.hermandad)
+        self.client.force_login(user)
+        turno = TurnoRecorrido.objects.create(
+            hermandad=self.hermandad,
+            numero=1,
+            nombre_turno="Turno alcanzado",
+            pieza="Marcha",
+            latitud=14.55,
+            longitud=-90.73,
+            orden_ruta=1,
+            alcanzado_en=timezone.now(),
+        )
+        self.hermandad.gps_ultimo_turno_en_zona_id = turno.pk
+        self.hermandad.save(update_fields=["gps_ultimo_turno_en_zona_id"])
+
+        response = self.client.post(
+            reverse("web:editor_turnos", kwargs={"slug": self.hermandad.slug}),
+            {"action": "reiniciar_seguimiento"},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("web:editor_turnos", kwargs={"slug": self.hermandad.slug}),
+        )
+        turno.refresh_from_db()
+        self.hermandad.refresh_from_db()
+        self.assertIsNone(turno.alcanzado_en)
+        self.assertIsNone(self.hermandad.gps_ultimo_turno_en_zona_id)
+
+    def test_public_tracking_view_receives_route_direction_turn(self):
+        TurnoRecorrido.objects.create(
+            hermandad=self.hermandad,
+            numero=2,
+            nombre_turno="Turno de retorno",
+            pieza="Marcha",
+            latitud=14.56,
+            longitud=-90.74,
+            orden_ruta=0,
+        )
+        self.hermandad.turno_cambio_direccion = 2
+        self.hermandad.save(update_fields=["turno_cambio_direccion"])
+
+        response = self.client.get(
+            reverse("web:seguimiento", kwargs={"slug": self.hermandad.slug})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["turno_cambio_direccion"], 2)
+        self.assertContains(response, "Ida")
+        self.assertContains(response, "Vuelta")
+        self.assertContains(response, "dividirRutaPorTurno")
+
+    def test_staff_cannot_save_edited_route_with_invalid_coordinates(self):
+        user = get_user_model().objects.create_user(
+            username="staff-rutas-invalidas",
+            password="staff-route-test",
+            is_staff=True,
+        )
+        AdministradorOrganizacion.objects.create(usuario=user, hermandad=self.hermandad)
+        self.client.force_login(user)
+        response = self.client.post(
+            reverse("web:editor_turnos", kwargs={"slug": self.hermandad.slug}),
+            {
+                "action": "guardar_trazado",
+                "ruta_trazado": json.dumps([[14.55, -90.73], [95, -90.74]]),
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("web:editor_turnos", kwargs={"slug": self.hermandad.slug}),
+        )
+        self.hermandad.refresh_from_db()
+        self.assertEqual(self.hermandad.ruta_trazado, [])
+
+    def test_staff_cannot_save_turn_with_negative_route_order(self):
+        user = get_user_model().objects.create_user(
+            username="staff-orden-negativo",
+            password="staff-route-test",
+            is_staff=True,
+        )
+        AdministradorOrganizacion.objects.create(usuario=user, hermandad=self.hermandad)
+        self.client.force_login(user)
+        response = self.client.post(
+            reverse("web:editor_turnos", kwargs={"slug": self.hermandad.slug}),
+            {
+                "numero": "1",
+                "orden_ruta": "-1",
+                "nombre_turno": "Turno de prueba",
+                "pieza": "Marcha de prueba",
+                "latitud": "14.55",
+                "longitud": "-90.73",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("web:editor_turnos", kwargs={"slug": self.hermandad.slug}),
+        )
+        self.assertFalse(TurnoRecorrido.objects.filter(hermandad=self.hermandad).exists())
 
     def test_editor_works_for_a_new_organization_without_code_changes(self):
         nueva = Hermandad.objects.create(

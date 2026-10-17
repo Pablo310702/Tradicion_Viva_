@@ -1,4 +1,5 @@
 {% extends "web/base.html" %}
+{% load tz %}
 
 {% block title %}Editor de turnos | {{ h.nombre }}{% endblock %}
 
@@ -60,6 +61,60 @@
     min-height:620px;
     flex:1 1 auto;
     background:var(--editor-surface-alt, #f4f4f4);
+  }
+
+  .route-tools{
+    padding:18px;
+    border-top:1px solid var(--editor-border);
+    color:var(--editor-text);
+  }
+
+  .route-tools p{
+    color:var(--editor-muted);
+    line-height:1.5;
+  }
+
+  .route-tools select{
+    width:100%;
+    max-width:360px;
+    padding:11px 12px;
+    border-radius:10px;
+    border:1px solid var(--editor-border);
+    background:var(--editor-input-bg);
+    color:var(--editor-text);
+  }
+
+  .route-legend{
+    display:flex;
+    gap:16px;
+    flex-wrap:wrap;
+    margin:10px 0;
+    color:var(--editor-text);
+  }
+
+  .route-legend-item{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+  }
+
+  .route-legend-swatch{
+    width:18px;
+    height:6px;
+    border-radius:999px;
+  }
+
+  .route-tools button:disabled{
+    cursor:not-allowed;
+    opacity:.6;
+  }
+
+  .route-vertex-icon{
+    width:12px;
+    height:12px;
+    border:2px solid #ffffff;
+    border-radius:50%;
+    box-shadow:0 1px 5px rgba(0,0,0,.45);
   }
 
   h1, h2{
@@ -150,6 +205,12 @@
     color:var(--theme-accent-strong, #111111)!important;
   }
 
+  .turno-progress{
+    color:var(--editor-muted);
+    margin-top:8px;
+    font-size:14px;
+  }
+
   .turno-actions{
     display:flex;
     gap:8px;
@@ -220,6 +281,31 @@
 <div class="editor-grid">
   <section class="card">
     <div id="mapaEditor"></div>
+    <div class="route-tools">
+      <h2>Ajustar línea del recorrido</h2>
+      <p id="routeModeHelp">Arrastra un tramo de la línea hacia la calle o mueve un punto ya marcado. Cada arrastre crea como máximo un punto ajustable.</p>
+      <div class="btn-row">
+        <button type="button" class="btn-clear" id="undoRouteEdit" disabled>Deshacer cambio</button>
+        <button type="button" class="btn-clear" id="resetRoute">Volver a unir las ubicaciones de los turnos</button>
+      </div>
+      <p>Los vértices existentes se conservan al ajustar la línea. Guarda los cambios para mostrarlos en el seguimiento público.</p>
+      <form method="post" id="saveRouteForm">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="guardar_trazado">
+        <input type="hidden" name="ruta_trazado" id="rutaTrazadoInput">
+        <input type="hidden" name="turno_cambio_direccion" id="turnoCambioDireccionInput">
+        <label for="turnoCambioDireccion">Turno donde termina la ida y comienza la vuelta</label>
+        <select id="turnoCambioDireccion">
+          <option value="">Usar un solo color</option>
+        </select>
+        <div class="route-legend" id="routeDirectionLegend" hidden>
+          <span class="route-legend-item"><span class="route-legend-swatch" style="background:#2563eb"></span>Ida</span>
+          <span class="route-legend-item"><span class="route-legend-swatch" style="background:#dc2626"></span>Vuelta</span>
+        </div>
+        <p>Al elegir el turno de retorno, la línea se divide en azul para la ida y rojo para la vuelta.</p>
+        <button type="submit" class="btn-save">Guardar línea</button>
+      </form>
+    </div>
   </section>
 
   <section class="card">
@@ -227,7 +313,12 @@
       <h1>Editor de turnos</h1>
       <div class="help">
         Haz clic en el mapa sobre la calle exacta donde corresponde el turno. Luego llena el formulario y guarda.
-        Si haces clic en un marcador ya guardado, sus datos se cargarán para editar.
+        Si haces clic en un marcador ya guardado, sus datos se cargarán para editar. También puedes arrastrarlo y guardar el turno para actualizar su ubicación sin cambiar sus demás datos.
+      </div>
+      <div class="btn-row">
+        <a class="btn-link btn-save" href="{% url 'web:inscripciones_turnos' h.slug %}">
+          Inscripciones y entrega de turnos
+        </a>
       </div>
 
       <form method="post">
@@ -237,12 +328,13 @@
         <div class="form-grid">
           <div>
             <label for="numero">Número de turno</label>
-            <input type="number" name="numero" id="numero" required>
+            <input type="number" name="numero" id="numero" min="0" required>
           </div>
 
           <div>
-            <label for="orden_ruta">Orden en la ruta</label>
-            <input type="number" name="orden_ruta" id="orden_ruta" required>
+            <label for="orden_ruta">Orden del punto dentro del turno</label>
+            <input type="number" name="orden_ruta" id="orden_ruta" min="0" required>
+            <small>El recorrido avanza por número de turno; este valor ordena varios puntos del mismo turno.</small>
           </div>
 
           <div class="full">
@@ -289,6 +381,7 @@
 
       <div class="turnos-lista">
         <h2>Turnos guardados</h2>
+        <p>Avance automático por GPS: {{ turnos_alcanzados }} de {{ turnos|length }} turnos alcanzados.</p>
 
         {% for t in turnos %}
           <div class="turno-item">
@@ -296,6 +389,13 @@
             <div>{{ t.pieza }}</div>
             <div>{{ t.direccion }}</div>
             <div>Lat: {{ t.latitud }} | Lng: {{ t.longitud }}</div>
+            <div class="turno-progress">
+              {% if t.alcanzado_en %}
+                Alcanzado por GPS: {{ t.alcanzado_en|localtime|date:"d/m/Y H:i:s" }}
+              {% else %}
+                Pendiente de alcanzar por GPS
+              {% endif %}
+            </div>
 
             <div class="turno-actions">
               <button
@@ -314,12 +414,21 @@
         {% empty %}
           <div class="turno-item">Aún no has guardado turnos.</div>
         {% endfor %}
+        {% if turnos_alcanzados %}
+          <form method="post" onsubmit="return confirm('¿Reiniciar el progreso GPS y marcar todos los turnos como pendientes?');">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="reiniciar_seguimiento">
+            <button type="submit" class="btn-clear">Reiniciar progreso GPS</button>
+          </form>
+        {% endif %}
       </div>
     </div>
   </section>
 </div>
 
 {{ turnos_data|json_script:"turnos-data" }}
+{{ ruta_trazado|json_script:"ruta-trazado-data" }}
+{{ turno_cambio_direccion|json_script:"turno-cambio-direccion-data" }}
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -330,9 +439,330 @@
   }).addTo(map);
 
   const turnosData = JSON.parse(document.getElementById('turnos-data').textContent);
+  const rutaGuardada = JSON.parse(document.getElementById("ruta-trazado-data").textContent);
+  const turnoCambioGuardado = JSON.parse(document.getElementById("turno-cambio-direccion-data").textContent);
+  const rutaTurnos = turnosData.map(turno => [turno.latitud, turno.longitud]);
+  const puntosTurno = turnosData.map(turno => [turno.latitud, turno.longitud]);
+  let geometriaRuta = simplificarRuta(rutaGuardada.length ? rutaGuardada : rutaTurnos);
+  const capaRuta = L.layerGroup().addTo(map);
+  const historialRuta = [];
+  const maxPuntosRuta = 2500;
+  const colorRuta = "{{ h.color_acento|default:'#b08d57' }}";
+  let lineasRuta = [];
+  let arrastreRuta = null;
+  let suprimirClicMapaHasta = 0;
 
   let marcadorTemporal = null;
   let marcadoresGuardados = [];
+  const selectorCambioDireccion = document.getElementById("turnoCambioDireccion");
+  const numerosTurno = [...new Set(turnosData.map(turno => turno.numero))].sort((a, b) => a - b);
+  numerosTurno.forEach(numero => {
+    const opcion = document.createElement("option");
+    opcion.value = numero;
+    opcion.textContent = `Turno ${numero}`;
+    selectorCambioDireccion.appendChild(opcion);
+  });
+  if (turnoCambioGuardado !== null && numerosTurno.includes(turnoCambioGuardado)) {
+    selectorCambioDireccion.value = String(turnoCambioGuardado);
+  }
+
+  function separarRutaPorTurno(puntos, numeroCambio) {
+    if (numeroCambio === "" || numeroCambio === null || puntos.length < 2) return null;
+    let turnoCambio = null;
+    turnosData.forEach(turno => {
+      if (turno.numero === Number(numeroCambio)) turnoCambio = turno;
+    });
+    if (!turnoCambio) return null;
+
+    const ancla = map.latLngToLayerPoint([turnoCambio.latitud, turnoCambio.longitud]);
+    let mejor = null;
+    for (let indice = 0; indice < puntos.length - 1; indice += 1) {
+      const inicio = map.latLngToLayerPoint(puntos[indice]);
+      const fin = map.latLngToLayerPoint(puntos[indice + 1]);
+      const dx = fin.x - inicio.x;
+      const dy = fin.y - inicio.y;
+      const largoCuadrado = dx * dx + dy * dy;
+      const proporcion = largoCuadrado
+        ? Math.max(0, Math.min(1, ((ancla.x - inicio.x) * dx + (ancla.y - inicio.y) * dy) / largoCuadrado))
+        : 0;
+      const x = inicio.x + proporcion * dx;
+      const y = inicio.y + proporcion * dy;
+      const distancia = (ancla.x - x) ** 2 + (ancla.y - y) ** 2;
+      if (!mejor || distancia < mejor.distancia) {
+        mejor = { indice, proporcion, distancia, punto: map.layerPointToLatLng(L.point(x, y)) };
+      }
+    }
+    if (!mejor) return null;
+
+    const puntoCambio = [mejor.punto.lat, mejor.punto.lng];
+    const ida = puntos.slice(0, mejor.indice + 1);
+    const ultimoPuntoIda = ida[ida.length - 1];
+    if (
+      Math.abs(ultimoPuntoIda[0] - puntoCambio[0]) > 0.000001
+      || Math.abs(ultimoPuntoIda[1] - puntoCambio[1]) > 0.000001
+    ) ida.push(puntoCambio);
+
+    const vuelta = [puntoCambio];
+    puntos.slice(mejor.indice + 1).forEach(punto => {
+      const anterior = vuelta[vuelta.length - 1];
+      if (
+        Math.abs(anterior[0] - punto[0]) > 0.000001
+        || Math.abs(anterior[1] - punto[1]) > 0.000001
+      ) vuelta.push([...punto]);
+    });
+    return { ida, vuelta, indiceCambio: mejor.indice };
+  }
+
+  function obtenerTurnoEnPunto(punto) {
+    return turnosData.find(turno => (
+      Math.abs(turno.latitud - punto[0]) < 0.000001
+      && Math.abs(turno.longitud - punto[1]) < 0.000001
+    )) || null;
+  }
+
+  function simplificarTramo(puntos, inicio, fin, conservar, tolerancia) {
+    if (fin <= inicio + 1) return;
+
+    const inicioPx = puntos[inicio];
+    const finPx = puntos[fin];
+    let mayorDistancia = tolerancia * tolerancia;
+    let indiceMayor = -1;
+
+    for (let indice = inicio + 1; indice < fin; indice += 1) {
+      if (conservar.has(indice)) {
+        indiceMayor = indice;
+        break;
+      }
+      const distancia = distanciaCuadradaAlSegmento(puntos[indice], inicioPx, finPx);
+      if (distancia > mayorDistancia) {
+        mayorDistancia = distancia;
+        indiceMayor = indice;
+      }
+    }
+
+    if (indiceMayor !== -1) {
+      conservar.add(indiceMayor);
+      simplificarTramo(puntos, inicio, indiceMayor, conservar, tolerancia);
+      simplificarTramo(puntos, indiceMayor, fin, conservar, tolerancia);
+    }
+  }
+
+  function simplificarRuta(puntos) {
+    if (puntos.length <= 2) return puntos.map(punto => [...punto]);
+
+    const proyectados = puntos.map(punto => map.latLngToLayerPoint(punto));
+    const conservar = new Set([0, puntos.length - 1]);
+    puntosTurno.forEach(turno => {
+      const turnoPx = map.latLngToLayerPoint(turno);
+      let indiceMasCercano = -1;
+      let menorDistancia = Infinity;
+      proyectados.forEach((punto, indice) => {
+        const dx = punto.x - turnoPx.x;
+        const dy = punto.y - turnoPx.y;
+        const distancia = dx * dx + dy * dy;
+        if (distancia < menorDistancia) {
+          menorDistancia = distancia;
+          indiceMasCercano = indice;
+        }
+      });
+      if (menorDistancia <= 9) conservar.add(indiceMasCercano);
+    });
+
+    const anclas = [...conservar].sort((a, b) => a - b);
+    for (let indice = 0; indice < anclas.length - 1; indice += 1) {
+      simplificarTramo(proyectados, anclas[indice], anclas[indice + 1], conservar, 5);
+    }
+
+    return [...conservar]
+      .sort((a, b) => a - b)
+      .map(indice => [...puntos[indice]]);
+  }
+
+  function guardarDeshacer(puntos) {
+    historialRuta.push({
+      puntos: puntos.map(punto => [...punto]),
+      ubicacionesTurno: turnosData.map(turno => [turno.latitud, turno.longitud]),
+    });
+    document.getElementById("undoRouteEdit").disabled = false;
+  }
+
+  function actualizarLineaRuta() {
+    const dividida = separarRutaPorTurno(geometriaRuta, selectorCambioDireccion.value);
+    const tramos = dividida
+      ? [dividida.ida, dividida.vuelta]
+      : [geometriaRuta];
+    lineasRuta.forEach((linea, indice) => {
+      if (linea) linea.setLatLngs(tramos[indice] || []);
+    });
+  }
+
+  function dibujarRuta() {
+    capaRuta.clearLayers();
+    lineasRuta = [];
+    const dividida = separarRutaPorTurno(geometriaRuta, selectorCambioDireccion.value);
+    const tramos = dividida
+      ? [
+        { puntos: dividida.ida, color: "#2563eb" },
+        { puntos: dividida.vuelta, color: "#dc2626" },
+      ]
+      : [{ puntos: geometriaRuta, color: colorRuta }];
+    tramos.forEach((tramo, indice) => {
+      if (tramo.puntos.length < 2) return;
+      const linea = L.polyline(tramo.puntos, {
+        color: tramo.color,
+        weight: 6,
+        opacity: 0.95,
+      }).addTo(capaRuta);
+      linea.on("mousedown", iniciarArrastreLinea);
+      lineasRuta[indice] = linea;
+    });
+
+    geometriaRuta.forEach((punto, indice) => {
+      const turnoEnVertice = obtenerTurnoEnPunto(punto);
+      const colorVertice = dividida && indice > dividida.indiceCambio ? "#dc2626" : (
+        dividida ? "#2563eb" : colorRuta
+      );
+      const vertice = L.marker(punto, {
+        draggable: true,
+        bubblingMouseEvents: false,
+        icon: L.divIcon({
+          className: "",
+          html: `<div class="route-vertex-icon" style="background:${colorVertice}"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        }),
+        title: turnoEnVertice ? "Ubicación de turno; arrastra para ajustar" : "Punto ajustable del recorrido",
+      }).addTo(capaRuta);
+
+      let rutaAntesDeMover;
+      vertice.on("dragstart", function() {
+        rutaAntesDeMover = geometriaRuta.map(p => [...p]);
+        map.dragging.disable();
+      });
+      vertice.on("drag", function(event) {
+        const posicion = event.target.getLatLng();
+        geometriaRuta[indice] = [posicion.lat, posicion.lng];
+        actualizarLineaRuta();
+      });
+      vertice.on("dragend", function(event) {
+        const posicion = event.target.getLatLng();
+        geometriaRuta[indice] = [posicion.lat, posicion.lng];
+        map.dragging.enable();
+        if (JSON.stringify(rutaAntesDeMover) !== JSON.stringify(geometriaRuta)) {
+          guardarDeshacer(rutaAntesDeMover);
+          if (turnoEnVertice) {
+            const turnosEnVertice = turnosData.filter(turno => (
+              Math.abs(turno.latitud - punto[0]) < 0.000001
+              && Math.abs(turno.longitud - punto[1]) < 0.000001
+            ));
+            turnosEnVertice.forEach(turno => {
+              turno.latitud = posicion.lat;
+              turno.longitud = posicion.lng;
+              const marcador = marcadoresGuardados[turnosData.indexOf(turno)];
+              if (marcador) marcador.setLatLng(posicion);
+            });
+            cargarTurno(
+              turnoEnVertice.id,
+              turnoEnVertice.numero,
+              turnoEnVertice.nombre_turno,
+              turnoEnVertice.pieza,
+              turnoEnVertice.genero,
+              turnoEnVertice.compositor,
+              turnoEnVertice.direccion,
+              posicion.lat,
+              posicion.lng,
+              turnoEnVertice.orden_ruta,
+              false,
+              false
+            );
+          }
+        }
+        dibujarRuta();
+      });
+    });
+  }
+
+  function distanciaCuadradaAlSegmento(punto, inicio, fin) {
+    const dx = fin.x - inicio.x;
+    const dy = fin.y - inicio.y;
+    const largoCuadrado = dx * dx + dy * dy;
+    const proporcion = largoCuadrado
+      ? Math.max(0, Math.min(1, ((punto.x - inicio.x) * dx + (punto.y - inicio.y) * dy) / largoCuadrado))
+      : 0;
+    const diferenciaX = punto.x - (inicio.x + proporcion * dx);
+    const diferenciaY = punto.y - (inicio.y + proporcion * dy);
+    return diferenciaX * diferenciaX + diferenciaY * diferenciaY;
+  }
+
+  function iniciarArrastreLinea(evento) {
+    if (geometriaRuta.length < 2 || arrastreRuta) return;
+    if (geometriaRuta.length >= maxPuntosRuta) {
+      document.getElementById("routeModeHelp").textContent = "El trazado llegó al máximo de puntos permitido.";
+      return;
+    }
+
+    L.DomEvent.stopPropagation(evento.originalEvent);
+    L.DomEvent.preventDefault(evento.originalEvent);
+    suprimirClicMapaHasta = Date.now() + 300;
+
+    const puntoPuntero = map.latLngToLayerPoint(evento.latlng);
+    const rutaOriginal = geometriaRuta.map(punto => [...punto]);
+    let indiceSegmento = 0;
+    let menorDistancia = Infinity;
+    for (let indice = 0; indice < geometriaRuta.length - 1; indice += 1) {
+      const inicio = map.latLngToLayerPoint(geometriaRuta[indice]);
+      const fin = map.latLngToLayerPoint(geometriaRuta[indice + 1]);
+      const distancia = distanciaCuadradaAlSegmento(puntoPuntero, inicio, fin);
+      if (distancia < menorDistancia) {
+        menorDistancia = distancia;
+        indiceSegmento = indice;
+      }
+    }
+
+    const puntoInicial = [evento.latlng.lat, evento.latlng.lng];
+    geometriaRuta.splice(indiceSegmento + 1, 0, puntoInicial);
+    arrastreRuta = {
+      indicePunto: indiceSegmento + 1,
+      rutaOriginal,
+      seMovio: false,
+    };
+    map.dragging.disable();
+    map.getContainer().style.cursor = "crosshair";
+    map.on("mousemove", continuarArrastreLinea);
+    map.on("mouseup", terminarArrastreLinea);
+    actualizarLineaRuta();
+  }
+
+  function continuarArrastreLinea(evento) {
+    if (!arrastreRuta) return;
+    const indice = arrastreRuta.indicePunto;
+    const anterior = geometriaRuta[indice];
+    const posicion = [evento.latlng.lat, evento.latlng.lng];
+    if (
+      Math.abs(anterior[0] - posicion[0]) < 0.000001
+      && Math.abs(anterior[1] - posicion[1]) < 0.000001
+    ) return;
+    geometriaRuta[indice] = posicion;
+    arrastreRuta.seMovio = true;
+    actualizarLineaRuta();
+  }
+
+  function terminarArrastreLinea() {
+    if (!arrastreRuta) return;
+    map.off("mousemove", continuarArrastreLinea);
+    map.off("mouseup", terminarArrastreLinea);
+    map.dragging.enable();
+    map.getContainer().style.cursor = "";
+
+    if (arrastreRuta.seMovio) {
+      guardarDeshacer(arrastreRuta.rutaOriginal);
+    } else {
+      geometriaRuta = arrastreRuta.rutaOriginal;
+    }
+    arrastreRuta = null;
+    suprimirClicMapaHasta = Date.now() + 300;
+    dibujarRuta();
+  }
 
   function colocarPunto(lat, lng) {
     document.getElementById("latitud").value = lat.toFixed(6);
@@ -346,7 +776,59 @@
   }
 
   map.on("click", function(e) {
+    if (Date.now() < suprimirClicMapaHasta) return;
     colocarPunto(e.latlng.lat, e.latlng.lng);
+  });
+
+  selectorCambioDireccion.addEventListener("change", function() {
+    document.getElementById("routeDirectionLegend").hidden = !this.value;
+    dibujarRuta();
+  });
+  document.getElementById("routeDirectionLegend").hidden = !selectorCambioDireccion.value;
+
+  document.getElementById("undoRouteEdit").addEventListener("click", function() {
+    const rutaAnterior = historialRuta.pop();
+    if (!rutaAnterior) return;
+    geometriaRuta = rutaAnterior.puntos;
+    rutaAnterior.ubicacionesTurno.forEach((ubicacion, indice) => {
+      turnosData[indice].latitud = ubicacion[0];
+      turnosData[indice].longitud = ubicacion[1];
+      const marcador = marcadoresGuardados[indice];
+      if (marcador) marcador.setLatLng(ubicacion);
+    });
+    const turnoSeleccionado = turnosData.find(turno => (
+      String(turno.id) === document.getElementById("turno_id").value
+    ));
+    if (turnoSeleccionado) {
+      cargarTurno(
+        turnoSeleccionado.id,
+        turnoSeleccionado.numero,
+        turnoSeleccionado.nombre_turno,
+        turnoSeleccionado.pieza,
+        turnoSeleccionado.genero,
+        turnoSeleccionado.compositor,
+        turnoSeleccionado.direccion,
+        turnoSeleccionado.latitud,
+        turnoSeleccionado.longitud,
+        turnoSeleccionado.orden_ruta,
+        false,
+        false
+      );
+    }
+    this.disabled = historialRuta.length === 0;
+    dibujarRuta();
+  });
+  document.getElementById("resetRoute").addEventListener("click", function() {
+    if (!window.confirm("¿Restablecer la línea para que una únicamente las ubicaciones de los turnos?")) {
+      return;
+    }
+    guardarDeshacer(geometriaRuta);
+    geometriaRuta = rutaTurnos.map(punto => [...punto]);
+    dibujarRuta();
+  });
+  document.getElementById("saveRouteForm").addEventListener("submit", function() {
+    document.getElementById("rutaTrazadoInput").value = JSON.stringify(geometriaRuta);
+    document.getElementById("turnoCambioDireccionInput").value = selectorCambioDireccion.value;
   });
 
   function limpiarFormulario() {
@@ -367,7 +849,7 @@
     }
   }
 
-  function cargarTurno(id, numero, nombre_turno, pieza, genero, compositor, direccion, latitud, longitud, orden_ruta) {
+  function cargarTurno(id, numero, nombre_turno, pieza, genero, compositor, direccion, latitud, longitud, orden_ruta, mostrarMarcadorTemporal = true, centrarMapa = true) {
     document.getElementById("turno_id").value = id;
     document.getElementById("numero").value = numero;
     document.getElementById("nombre_turno").value = nombre_turno;
@@ -379,8 +861,13 @@
     document.getElementById("longitud").value = longitud;
     document.getElementById("orden_ruta").value = orden_ruta;
 
-    colocarPunto(latitud, longitud);
-    map.setView([latitud, longitud], 18);
+    if (mostrarMarcadorTemporal) {
+      colocarPunto(latitud, longitud);
+    } else if (marcadorTemporal) {
+      map.removeLayer(marcadorTemporal);
+      marcadorTemporal = null;
+    }
+    if (centrarMapa) map.setView([latitud, longitud], 18);
   }
 
   function dibujarTurnosGuardados() {
@@ -397,7 +884,7 @@
         </div>
       `;
 
-      const marker = L.marker([turno.latitud, turno.longitud]).addTo(map).bindPopup(popup);
+      const marker = L.marker([turno.latitud, turno.longitud], { draggable: true }).addTo(map).bindPopup(popup);
 
       marker.on("click", function() {
         cargarTurno(
@@ -414,10 +901,28 @@
         );
       });
 
+      marker.on("dragend", function(event) {
+        const posicion = event.target.getLatLng();
+        cargarTurno(
+          turno.id,
+          turno.numero,
+          turno.nombre_turno,
+          turno.pieza,
+          turno.genero,
+          turno.compositor,
+          turno.direccion,
+          posicion.lat,
+          posicion.lng,
+          turno.orden_ruta,
+          false
+        );
+      });
+
       marcadoresGuardados.push(marker);
     });
   }
 
+  dibujarRuta();
   dibujarTurnosGuardados();
 </script>
 {% endblock %}

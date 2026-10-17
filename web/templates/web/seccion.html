@@ -162,16 +162,17 @@ style="background: var(--theme-accent, #d4af37);"
 {% else %}
 <style>
   :root {
-    --theme-page: #0f0f0f;
-    --theme-surface: #151515;
-    --theme-surface-2: #1b1b1b;
-    --theme-header: #080808;
+    /* Las nuevas organizaciones usan los colores configurados en Django. */
+    --theme-page: {{ h.color_primario|default:'#0f0f0f' }};
+    --theme-surface: color-mix(in srgb, {{ h.color_primario|default:'#0f0f0f' }} 92%, white);
+    --theme-surface-2: color-mix(in srgb, {{ h.color_primario|default:'#0f0f0f' }} 82%, white);
+    --theme-header: {{ h.color_primario|default:'#080808' }};
     --theme-header-text: #ffffff;
     --theme-text: #f5f5f5;
     --theme-muted: #bdbdbd;
-    --theme-border: #303030;
-    --theme-accent: #d4af37;
-    --theme-accent-strong: #b08d57;
+    --theme-border: {{ h.color_acento|default:'#303030' }};
+    --theme-accent: {{ h.color_acento|default:'#d4af37' }};
+    --theme-accent-strong: {{ h.color_acento|default:'#b08d57' }};
     --theme-on-accent: #111111;
     --theme-shadow: rgba(0, 0, 0, .25);
   }
@@ -372,6 +373,39 @@ style="background: var(--theme-accent, #d4af37);"
     line-height: 1.65 !important;
 }
 
+.content-grid--galeria-filmica {
+  width: 100% !important;
+  max-width: 1500px;
+  margin-inline: auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 48px !important;
+  justify-content: stretch !important;
+}
+
+.content-grid--galeria-filmica .content-card {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.content-grid--galeria-filmica .content-card-body {
+  padding: 24px 28px 28px !important;
+  text-align: center;
+}
+
+.content-grid--galeria-filmica .content-card h3 {
+  font-size: 24px !important;
+}
+
+.content-grid--galeria-filmica .content-card p {
+  font-size: 16px !important;
+  line-height: 1.65 !important;
+  text-align: center;
+}
+
+.content-grid--galeria-filmica .external-link {
+  margin-top: 14px;
+}
+
 @media (max-width: 768px) {
     .content-grid--nuestras-imagenes {
         grid-template-columns: 1fr !important;
@@ -380,6 +414,15 @@ style="background: var(--theme-accent, #d4af37);"
     .content-grid--nuestras-imagenes .content-card-media {
         height: 380px !important;
         min-height: 380px !important;
+    }
+
+    .content-grid--galeria-filmica {
+      grid-template-columns: 1fr !important;
+      gap: 24px !important;
+    }
+
+    .content-grid--galeria-filmica .content-card-body {
+      padding: 18px !important;
     }
 }
   .image-credit-overlay {
@@ -1643,7 +1686,7 @@ style="background: var(--theme-accent, #d4af37);"
 
       {% if videos %}
 
-        <div class="content-grid">
+        <div class="content-grid content-grid--galeria-filmica">
 
           {% for video in videos %}
 
@@ -2191,7 +2234,7 @@ style="background: var(--theme-accent, #d4af37);"
               </strong>
 
               <small>
-                Puedes elegir uno, varios o ninguno.
+                Puedes elegir uno o ninguno.
                 La organización utilizará únicamente
                 los canales que autorices.
               </small>
@@ -2215,26 +2258,6 @@ style="background: var(--theme-accent, #d4af37);"
               {% endfor %}
 
             </label>
-
-
-
-            <label class="privacy-row full-row">
-
-              {{ form.acepta_sms }}
-
-              <span>
-                {{ form.acepta_sms.label }}
-              </span>
-
-              {% for error in form.acepta_sms.errors %}
-                <small class="field-error">
-                  {{ error }}
-                </small>
-              {% endfor %}
-
-            </label>
-
-
 
             <label class="privacy-row full-row">
 

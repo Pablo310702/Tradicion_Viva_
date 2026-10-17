@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
 from .models import Hermandad, MarchaProcesional, VideoHermandad
@@ -27,6 +28,18 @@ class ContentModelTests(TestCase):
             "https://www.youtube-nocookie.com/embed/abcdefghijk",
         )
 
+    def test_organization_quota_rejects_oversized_upload(self):
+        self.hermandad.almacenamiento_cuota_mb = 1
+        self.hermandad.save()
+        video = VideoHermandad(
+            hermandad=self.hermandad,
+            titulo="Video que excede la cuota",
+            video=SimpleUploadedFile("video.mp4", b"x" * (1024 * 1024 + 1), content_type="video/mp4"),
+        )
+
+        with self.assertRaisesMessage(ValidationError, "superaría su cuota"):
+            video.save()
+
 from datetime import date
 from unittest.mock import Mock
 
@@ -36,6 +49,7 @@ from .messaging import (
     normalizar_telefono_e164,
     send_sms_twilio,
     send_whatsapp_meta,
+    send_whatsapp_document_template,
 )
 from .models import Comunicado, Devoto
 
@@ -124,3 +138,39 @@ class MessagingServiceTests(TestCase):
         parameters = payload["template"]["components"][0]["parameters"]
         self.assertEqual(parameters[0]["text"], "Ana")
         self.assertEqual(parameters[1]["text"], "Información importante")
+
+    @override_settings(
+        WHATSAPP_ACCESS_TOKEN="token-meta",
+        WHATSAPP_PHONE_NUMBER_ID="123456789",
+        WHATSAPP_GRAPH_API_VERSION="v25.0",
+        WHATSAPP_RECEIPT_TEMPLATE_NAME="comprobante_registro",
+        WHATSAPP_RECEIPT_TEMPLATE_LANGUAGE="es",
+        MESSAGING_HTTP_TIMEOUT=5,
+    )
+    def test_whatsapp_subida_y_envia_pdf_con_plantilla_utility(self):
+        media_response = Mock(status_code=200, ok=True)
+        media_response.json.return_value = {"id": "media-123"}
+        message_response = Mock(status_code=200, ok=True)
+        message_response.json.return_value = {"messages": [{"id": "wamid.123"}]}
+        session = Mock()
+        session.post.side_effect = [media_response, message_response]
+
+        result = send_whatsapp_document_template(
+            "+50255555555",
+            b"%PDF contenido",
+            "comprobante.pdf",
+            session=session,
+        )
+
+        self.assertEqual(result.message_id, "wamid.123")
+        upload_call, message_call = session.post.call_args_list
+        self.assertTrue(upload_call.args[0].endswith("/123456789/media"))
+        self.assertEqual(
+            upload_call.kwargs["files"]["file"],
+            ("comprobante.pdf", b"%PDF contenido", "application/pdf"),
+        )
+        payload = message_call.kwargs["json"]
+        self.assertEqual(payload["to"], "50255555555")
+        self.assertEqual(payload["template"]["name"], "comprobante_registro")
+        document = payload["template"]["components"][0]["parameters"][0]["document"]
+        self.assertEqual(document, {"id": "media-123", "filename": "comprobante.pdf"})

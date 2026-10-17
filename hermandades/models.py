@@ -10,15 +10,89 @@ from django.db import models
 import uuid
 from django.urls import reverse
 
-from .validators import validate_audio_size, validate_image_size, validate_video_size 
+
+def _color_is_light(value: str) -> bool:
+    """Return whether a hexadecimal color needs dark foreground text."""
+    color = (value or "").strip().lstrip("#")
+    if len(color) == 3:
+        color = "".join(char * 2 for char in color)
+    if len(color) != 6:
+        return False
+    try:
+        red, green, blue = (int(color[index:index + 2], 16) for index in (0, 2, 4))
+    except ValueError:
+        return False
+    luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255
+    return luminance >= 0.58
+
+from .validators import (
+    validate_audio_size,
+    validate_image_size,
+    validate_organization_media_quota,
+    validate_video_size,
+)
 
 
-class Hermandad(models.Model):
+class OrganizationMediaQuotaMixin:
+    media_file_fields = ()
+
+    def save(self, *args, **kwargs):
+        previous = None
+        if not self._state.adding:
+            previous = (
+                type(self).objects.filter(pk=self.pk)
+                .values(*self.media_file_fields)
+                .first()
+            )
+
+        incoming_bytes = 0
+        replaced_names = []
+        for field_name in self.media_file_fields:
+            uploaded_file = getattr(self, field_name, None)
+            if uploaded_file and not getattr(uploaded_file, "_committed", True):
+                incoming_bytes += uploaded_file.size
+                old_name = (previous or {}).get(field_name)
+                if old_name:
+                    replaced_names.append(old_name)
+
+        organization = getattr(self, "hermandad", self)
+        if incoming_bytes:
+            validate_organization_media_quota(
+                organization,
+                incoming_bytes,
+                replaced_names,
+            )
+        return super().save(*args, **kwargs)
+
+
+class Hermandad(OrganizationMediaQuotaMixin, models.Model):
+    media_file_fields = ("imagen_templo", "logo", "portada")
+
     nombre = models.CharField(max_length=200)
     templo = models.CharField(max_length=200, blank=True)
     ciudad = models.CharField(max_length=100, default="Antigua Guatemala")
     slug = models.SlugField(max_length=80, unique=True)
     descripcion_corta = models.CharField(max_length=255, blank=True)
+    ruta_trazado = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="trazado editable del recorrido",
+    )
+    turno_cambio_direccion = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="turno donde cambia de ida a vuelta",
+    )
+    ultima_posicion_turno_procesada_en = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="última posición GPS procesada para los turnos",
+    )
+    gps_ultimo_turno_en_zona_id = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="último turno cuya zona GPS se visitó",
+    )
 
     TIPO_HERMANDAD = "hermandad"
     TIPO_COFRADIA = "cofradia"
@@ -40,6 +114,14 @@ class Hermandad(models.Model):
     color_primario = models.CharField(max_length=20, default="#111111")
     color_acento = models.CharField(max_length=20, default="#b08d57")
 
+    @property
+    def color_primario_texto(self):
+        return "#111111" if _color_is_light(self.color_primario) else "#ffffff"
+
+    @property
+    def color_acento_texto(self):
+        return "#111111" if _color_is_light(self.color_acento) else "#ffffff"
+
     logo = models.ImageField(
         upload_to="logos/",
         null=True,
@@ -51,6 +133,11 @@ class Hermandad(models.Model):
         null=True,
         blank=True,
         validators=[validate_image_size, FileExtensionValidator(["jpg", "jpeg", "png", "webp"])],
+    )
+    almacenamiento_cuota_mb = models.PositiveIntegerField(
+        default=2048,
+        verbose_name="cuota de archivos (MB)",
+        help_text="Límite total de fotos, videos, audio, logo y portada de esta organización.",
     )
 
     email_contacto = models.EmailField(blank=True)
@@ -66,6 +153,21 @@ class Hermandad(models.Model):
         default=False,
         verbose_name="seguimiento GPS activo",
         help_text="Activa el seguimiento en vivo para esta hermandad o cofradía.",
+    )
+    gps_publico = models.BooleanField(
+        default=False,
+        verbose_name="publicar seguimiento GPS",
+        help_text="Permite mostrar la ubicación pública durante el intervalo configurado.",
+    )
+    gps_publicacion_desde = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="publicar desde",
+    )
+    gps_publicacion_hasta = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="publicar hasta",
     )
     traccar_device_id = models.CharField(
         max_length=80,
@@ -90,10 +192,37 @@ class Hermandad(models.Model):
             raise ValidationError(
                 {"traccar_device_id": "Debes indicar el ID de Traccar para activar el seguimiento GPS."}
             )
+        if self.gps_publico:
+            if not self.gps_activo:
+                raise ValidationError({"gps_publico": "Activa el seguimiento GPS antes de publicarlo."})
+            if not self.gps_publicacion_desde or not self.gps_publicacion_hasta:
+                raise ValidationError({"gps_publicacion_desde": "Define el inicio y el fin del horario público."})
+        if bool(self.gps_publicacion_desde) != bool(self.gps_publicacion_hasta):
+            raise ValidationError({"gps_publicacion_hasta": "Define ambas fechas para configurar el horario GPS."})
+        if (
+            self.gps_publicacion_desde
+            and self.gps_publicacion_hasta
+            and self.gps_publicacion_hasta <= self.gps_publicacion_desde
+        ):
+            raise ValidationError({"gps_publicacion_hasta": "El fin debe ser posterior al inicio."})
 
     @property
     def gps_configurado(self):
         return bool(self.gps_activo and self.traccar_device_id)
+
+    @property
+    def gps_publicable(self):
+        if not (
+            self.gps_configurado
+            and self.gps_publico
+            and self.gps_publicacion_desde
+            and self.gps_publicacion_hasta
+        ):
+            return False
+        from django.utils import timezone
+
+        ahora = timezone.now()
+        return self.gps_publicacion_desde <= ahora < self.gps_publicacion_hasta
 
     @property
     def es_hermandad(self):
@@ -171,6 +300,11 @@ class TurnoRecorrido(models.Model):
     longitud = models.FloatField()
     orden_ruta = models.PositiveIntegerField(default=0)
     activa = models.BooleanField(default=True)
+    alcanzado_en = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="fecha y hora en que se alcanzó",
+    )
 
     class Meta:
         ordering = ["numero", "orden_ruta"]
@@ -183,6 +317,65 @@ class TurnoRecorrido(models.Model):
 
     def __str__(self):
         return f"{self.hermandad.nombre} - Turno {self.numero} - {self.pieza}"
+
+
+class InscripcionTurno(models.Model):
+    devoto = models.ForeignKey(
+        "Devoto",
+        on_delete=models.CASCADE,
+        related_name="turnos_inscritos",
+    )
+    turno = models.ForeignKey(
+        TurnoRecorrido,
+        on_delete=models.PROTECT,
+        related_name="inscripciones",
+    )
+    inscrito_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="inscripciones_turnos_creadas",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+    entregado = models.BooleanField(default=False)
+    entregado_en = models.DateTimeField(null=True, blank=True)
+    entregado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="entregas_turnos_confirmadas",
+    )
+
+    class Meta:
+        ordering = ["entregado", "-creado_en"]
+        verbose_name = "inscripción de turno"
+        verbose_name_plural = "inscripciones de turnos"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["devoto", "turno"],
+                name="inscripcion_devoto_turno_uniq",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["turno", "entregado"],
+                name="ins_turno_entrega_idx",
+            )
+        ]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.devoto_id and self.turno_id:
+            if self.devoto.hermandad_id != self.turno.hermandad_id:
+                raise ValidationError("El turno y el devoto deben pertenecer a la misma organización.")
+        if self.entregado and not self.entregado_en:
+            raise ValidationError({"entregado_en": "Indica cuándo se entregó el turno."})
+
+    def __str__(self):
+        return f"{self.devoto.nombre_completo} - Turno {self.turno.numero}"
 
 
 class EventoAgenda(models.Model):
@@ -235,6 +428,27 @@ class CuentaDevoto(models.Model):
 
     def __str__(self):
         return self.correo
+
+
+class SesionApiDevoto(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    cuenta = models.ForeignKey(
+        CuentaDevoto,
+        on_delete=models.CASCADE,
+        related_name="sesiones_api",
+    )
+    refresh_jti = models.CharField(max_length=64, unique=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+    revocado_en = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["cuenta", "revocado_en"], name="api_sesion_cta_rev")]
+        verbose_name = "sesión API de devoto"
+        verbose_name_plural = "sesiones API de devotos"
+
+    def __str__(self):
+        return f"Sesión API de {self.cuenta.correo}"
 
 
 class Devoto(models.Model):
@@ -331,7 +545,9 @@ class Devoto(models.Model):
         return f"{self.nombre_completo} - {self.hermandad.nombre}"
 
 
-class ImagenHermandad(models.Model):
+class ImagenHermandad(OrganizationMediaQuotaMixin, models.Model):
+    media_file_fields = ("imagen", "miniatura")
+
     CATEGORIA_CHOICES = [
         ("titular", "Nuestras imágenes"),
         ("galeria", "Galería de fotos"),
@@ -398,7 +614,9 @@ class ImagenHermandad(models.Model):
             super().save(update_fields=["miniatura"])
 
 
-class VideoHermandad(models.Model):
+class VideoHermandad(OrganizationMediaQuotaMixin, models.Model):
+    media_file_fields = ("video",)
+
     hermandad = models.ForeignKey(
         Hermandad,
         on_delete=models.CASCADE,
@@ -546,7 +764,9 @@ class VideoHermandad(models.Model):
         )
 
 
-class MarchaProcesional(models.Model):
+class MarchaProcesional(OrganizationMediaQuotaMixin, models.Model):
+    media_file_fields = ("audio",)
+
     hermandad = models.ForeignKey(
         Hermandad,
         on_delete=models.CASCADE,
