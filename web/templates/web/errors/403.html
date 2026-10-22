@@ -1,0 +1,4 @@
+{% extends "web/base.html" %}
+{% block title %}Acceso restringido | TRADICIÓN VIVA{% endblock %}
+{% block header_actions %}{% endblock %}
+{% block content %}<section class="system-error"><div class="system-error-code">403</div><h1>Acceso restringido</h1><p>No tienes permisos para consultar este contenido.</p><a class="error-action" href="{% url 'web:home' %}">Volver al inicio</a></section>{% endblock %}

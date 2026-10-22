@@ -19,3 +19,9 @@ Thumbs.db
 respaldo*.json
 db_respaldo*.sqlite3
 backups/ 
+
+# Archivos generados durante el despliegue
+staticfiles/
+
+# Respaldos locales de archivos multimedia
+media/videos/*_original.mp4

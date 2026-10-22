@@ -1,0 +1,32 @@
+{% extends "web/base.html" %}
+
+{% block title %}Políticas de calidad | TRADICIÓN VIVA{% endblock %}
+{% block meta_description %}Políticas de calidad y principios de servicio de TRADICIÓN VIVA.{% endblock %}
+
+{% block extra_css %}
+<style>
+  .quality-card{max-width:850px;margin:0 auto;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:clamp(24px,5vw,48px);box-shadow:0 12px 28px rgba(66,25,78,.1);}
+  .quality-card h1{margin-top:0;color:var(--brand-primary-deep);}
+  .quality-card h2{margin:28px 0 8px;color:var(--brand-primary);font-size:22px;}
+  .quality-card p,.quality-card li{color:var(--muted);line-height:1.65;}
+  .quality-card ul{padding-left:22px;}
+</style>
+{% endblock %}
+
+{% block content %}
+<article class="quality-card">
+  <p class="institutional-kicker">Compromiso institucional</p>
+  <h1>Políticas de calidad</h1>
+  <p>TRADICIÓN VIVA busca ofrecer un servicio digital confiable, claro y útil para las hermandades, cofradías, administradores y devotos.</p>
+  <h2>Principios de servicio</h2>
+  <ul>
+    <li><strong>Confiabilidad:</strong> proteger la información y mantener disponibles las funciones esenciales.</li>
+    <li><strong>Claridad:</strong> presentar procesos, mensajes y requisitos de forma comprensible.</li>
+    <li><strong>Accesibilidad:</strong> facilitar el uso desde computadoras y dispositivos móviles.</li>
+    <li><strong>Transparencia:</strong> brindar información institucional y criterios claros para cada proceso.</li>
+    <li><strong>Mejora continua:</strong> revisar el sistema a partir de las necesidades de las organizaciones y sus usuarios.</li>
+  </ul>
+  <h2>Atención y mejora</h2>
+  <p>Los comentarios sobre el funcionamiento del sistema pueden enviarse a <a href="mailto:tradicionvivagt@gmail.com">tradicionvivagt@gmail.com</a>. Cada observación será considerada para mejorar la experiencia y la calidad del servicio.</p>
+</article>
+{% endblock %}

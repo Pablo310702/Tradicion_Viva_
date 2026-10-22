@@ -79,12 +79,14 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "web.security.AbuseRateLimitMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "web.middleware.OrganizationContextMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "web.session_timeout.InactivityTimeoutMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -206,6 +208,10 @@ if REDIS_URL:
             "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
         }
     }
+elif not DEBUG:
+    raise ImproperlyConfigured(
+        "Falta REDIS_URL en produccion. Configura Redis administrado antes de publicar."
+    )
 else:
     CACHES = {
         "default": {
@@ -228,6 +234,7 @@ SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
+SESSION_IDLE_TIMEOUT_SECONDS = int(os.environ.get("SESSION_IDLE_TIMEOUT_SECONDS", "180"))
 
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -237,6 +244,13 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "3600"))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", default=False)
     SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD", default=False)
+else:
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+
+# Configuración explícita de encabezados para reducir exposición en navegadores.
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+SECURE_CROSS_ORIGIN_RESOURCE_POLICY = "same-origin"
 
 # Correo electrónico. Por defecto se imprime en consola para desarrollo.
 # Para envíos reales configura un servidor SMTP en el archivo .env.
@@ -258,6 +272,7 @@ DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "TRADICIÓN VIVA <no-r
 DEFAULT_PHONE_COUNTRY_CODE = os.environ.get("DEFAULT_PHONE_COUNTRY_CODE", "+502")
 MESSAGING_HTTP_TIMEOUT = int(os.environ.get("MESSAGING_HTTP_TIMEOUT", "15"))
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").strip().rstrip("/")
+TRUST_CLOUDFLARE_IP_HEADER = env_bool("TRUST_CLOUDFLARE_IP_HEADER", default=False)
 
 TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "")
@@ -284,6 +299,7 @@ TRACCAR_USERNAME = os.environ.get("TRACCAR_USERNAME", "")
 TRACCAR_PASSWORD = os.environ.get("TRACCAR_PASSWORD", "")
 GPS_API_RATE_LIMIT_PER_MINUTE = int(os.environ.get("GPS_API_RATE_LIMIT_PER_MINUTE", "60"))
 GPS_MAX_POSITION_AGE_MINUTES = int(os.environ.get("GPS_MAX_POSITION_AGE_MINUTES", "5"))
+BACKUP_DIR = Path(os.environ.get("BACKUP_DIR", str(BASE_DIR / "backups"))).resolve()
 
 LOGGING = {
     "version": 1,

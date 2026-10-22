@@ -176,7 +176,7 @@
           {% endif %}
         </div>
         {% if inscripcion.entregado %}
-          <form method="post" action="{% url 'web:limpiar_entrega_turno' h.slug inscripcion.pk %}">
+          <form method="post" action="{% url 'web:limpiar_entrega_turno' h.slug inscripcion.pk %}" onsubmit="return confirm('¿Confirmas que deseas eliminar este registro de turno?');">
             {% csrf_token %}
             <button class="button button-secondary" type="submit">Eliminar registro</button>
           </form>

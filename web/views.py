@@ -1,10 +1,12 @@
 import calendar
+import csv
 from datetime import timedelta, timezone as datetime_timezone
 import hashlib
 import json
 import logging
 import math
 import re
+from collections import defaultdict
 from io import BytesIO
 
 import requests
@@ -15,20 +17,22 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import authenticate, get_user_model, login
 from django.core import signing
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives, send_mail
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
+from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
 from hermandades.models import (
     AdministradorOrganizacion,
+    ActividadAdministrativa,
+    Comunicado,
     CuentaDevoto,
     Devoto,
     EventoAgenda,
@@ -36,6 +40,7 @@ from hermandades.models import (
     InscripcionTurno,
     TurnoRecorrido,
 )
+from .security import esta_bloqueado, limpiar_fallos_login, registrar_fallo_login
 from hermandades.messaging import (
     normalizar_telefono_e164,
     send_registration_receipt_email,
@@ -49,6 +54,7 @@ from .forms import (
     RecuperarCuentaDevotoForm,
     RestablecerPasswordDevotoForm,
 )
+from .audit import registrar_actividad
 from .pdf_utils import generar_comprobante_devoto
 
 logger = logging.getLogger(__name__)
@@ -58,6 +64,65 @@ GPS_TURN_DEFAULT_RADIUS_METERS = 30
 GPS_TURN_MIN_RADIUS_METERS = 25
 GPS_TURN_MAX_RADIUS_METERS = 60
 GPS_TURN_MAX_ACCURACY_METERS = 100
+
+
+def _dashboard_color(value, fallback):
+    """Accept only hexadecimal colors configured by an organization."""
+    value = (value or "").strip()
+    return value if re.fullmatch(r"#[0-9a-fA-F]{6}", value) else fallback
+
+
+def _dashboard_luminance(color):
+    """Return a simple luminance value for a validated hexadecimal color."""
+    red, green, blue = (int(color[index : index + 2], 16) for index in (1, 3, 5))
+    return (0.299 * red) + (0.587 * green) + (0.114 * blue)
+
+
+def _dashboard_readable_color(color):
+    """Darken a light organization color while preserving its hue."""
+    luminance = _dashboard_luminance(color)
+    if luminance <= 140:
+        return color
+    factor = 120 / luminance
+    channels = [int(int(color[index : index + 2], 16) * factor) for index in (1, 3, 5)]
+    return "#%02x%02x%02x" % tuple(max(0, min(channel, 255)) for channel in channels)
+
+
+def _dashboard_contrast_color(primary, accent):
+    """Choose the darker organization color for readable text on light cards."""
+    chosen = min((primary, accent), key=_dashboard_luminance)
+    return _dashboard_readable_color(chosen)
+
+
+def _dashboard_brand_colors(organizacion):
+    """Use the requested identity colors for the known organizations."""
+    nombre = (organizacion.nombre if organizacion else "").casefold()
+    if "rosario" in nombre:
+        return "#f0d8e2", "#e5b7c9"
+    if "cristo" in nombre or "perdon" in nombre or "perdón" in nombre:
+        return "#ead9a3", "#d8bf72"
+    if "san josé" in nombre or "san jose" in nombre:
+        return "#c8dec9", "#a8c9ab"
+    if "calvario" in nombre:
+        return "#c8d7e8", "#9fb9d2"
+    return (
+        _dashboard_color(getattr(organizacion, "color_primario", ""), "#743a8b"),
+        _dashboard_color(getattr(organizacion, "color_acento", ""), "#b88ac5"),
+    )
+
+
+def _dashboard_text_color(organizacion, primary, accent):
+    """Keep the organization's hue in readable dashboard text."""
+    nombre = (organizacion.nombre if organizacion else "").casefold()
+    if "rosario" in nombre:
+        return "#9b4768"
+    if "cristo" in nombre or "perdon" in nombre or "perdón" in nombre:
+        return "#896b24"
+    if "san josé" in nombre or "san jose" in nombre:
+        return "#3f6f49"
+    if "calvario" in nombre:
+        return "#315a7c"
+    return _dashboard_contrast_color(primary, accent)
 
 
 def _parse_route_points(raw_value):
@@ -213,7 +278,7 @@ def _enviar_comprobante_registro(request, devoto):
         return
 
     pdf_bytes = _comprobante_pdf_bytes(request, devoto)
-    filename = f"comprobante_devoto_{devoto.id}_{devoto.hermandad.slug}.pdf"
+    filename = f"comprobante_devoto_{devoto.numero_registro}_{devoto.hermandad.slug}.pdf"
     if devoto.acepta_email:
         try:
             send_registration_receipt_email(
@@ -238,12 +303,21 @@ def home(request):
     return render(request, "web/home.html", {"hermandades": hermandades})
 
 
+def organizaciones(request):
+    hermandades = Hermandad.objects.filter(activa=True).order_by("nombre")
+    return render(request, "web/organizaciones.html", {"hermandades": hermandades})
+
+
+def privacidad(request):
+    return render(request, "web/privacidad.html")
+
+
+def calidad(request):
+    return render(request, "web/calidad.html")
+
+
 def iniciar_sesion(request):
     """Selector público entre acceso de devotos y acceso administrativo."""
-    if _cuenta_devoto_actual(request):
-        return redirect("web:devoto_panel")
-    if request.user.is_authenticated and request.user.is_staff:
-        return redirect("admin:index")
     return render(request, "web/iniciar_sesion.html")
 
 
@@ -262,12 +336,21 @@ def devoto_login(request):
     if request.method == "POST":
         form = DevotoLoginForm(request.POST)
         if form.is_valid():
-            cuenta = CuentaDevoto.objects.filter(correo__iexact=form.cleaned_data["correo"]).first()
-            if not cuenta or not cuenta.activa or not cuenta.check_password(form.cleaned_data["password"]):
-                form.add_error(None, "Correo o contraseña incorrectos.")
+            correo = form.cleaned_data["correo"]
+            bloqueado = esta_bloqueado("devoto", correo, request)
+            cuenta = None if bloqueado else CuentaDevoto.objects.filter(correo__iexact=correo).first()
+            if bloqueado:
+                form.add_error(None, "Acceso temporalmente bloqueado por varios intentos fallidos. Intenta de nuevo en 15 minutos.")
+            elif not cuenta or not cuenta.activa or not cuenta.check_password(form.cleaned_data["password"]):
+                if registrar_fallo_login("devoto", correo, request):
+                    form.add_error(None, "Se alcanzó el límite de intentos. El acceso quedó bloqueado durante 15 minutos.")
+                else:
+                    form.add_error(None, "Correo o contraseña incorrectos.")
             else:
+                limpiar_fallos_login("devoto", correo, request)
                 request.session.cycle_key()
                 request.session["cuenta_devoto_id"] = cuenta.pk
+                request.session["tradicion_viva_last_activity"] = timezone.now().timestamp()
                 request.session.set_expiry(60 * 60 * 24 * 30 if form.cleaned_data["recordar"] else 0)
                 cuenta.ultimo_acceso = timezone.now()
                 cuenta.save(update_fields=["ultimo_acceso"])
@@ -353,11 +436,14 @@ def devoto_logout(request):
 
 def administrativo_login(request):
     if request.user.is_authenticated and request.user.is_staff:
-        return redirect("admin:index")
+        return redirect("web:admin_dashboard")
 
     form = AdministrativoLoginForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         identificador = form.cleaned_data["usuario"].strip()
+        if esta_bloqueado("administrativo", identificador, request):
+            form.add_error(None, "Acceso temporalmente bloqueado por varios intentos fallidos. Intenta de nuevo en 15 minutos.")
+            return render(request, "web/administrativo_login.html", {"form": form})
         user_model = get_user_model()
         user_obj = user_model.objects.filter(username__iexact=identificador).first()
         if user_obj is None:
@@ -375,18 +461,300 @@ def administrativo_login(request):
             ).exists()
 
             if tiene_acceso:
+                limpiar_fallos_login("administrativo", identificador, request)
                 login(request, user)
+                request.session["tradicion_viva_last_activity"] = timezone.now().timestamp()
+                registrar_actividad(
+                    request,
+                    "inicio_sesion",
+                    "Inicio de sesión administrativo correcto.",
+                )
                 messages.success(request, "Bienvenido al panel administrativo de TRADICIÓN VIVA.")
-                return redirect("admin:index")
+                return redirect("web:admin_dashboard")
 
             form.add_error(
                 None,
                 "Tu usuario administrativo todavía no tiene una hermandad o cofradía asignada.",
             )
         else:
-            form.add_error(None, "Credenciales incorrectas o usuario sin permisos administrativos.")
+            if registrar_fallo_login("administrativo", identificador, request):
+                form.add_error(None, "Se alcanzó el límite de intentos. El acceso quedó bloqueado durante 15 minutos.")
+            else:
+                form.add_error(None, "Credenciales incorrectas o usuario sin permisos administrativos.")
 
     return render(request, "web/administrativo_login.html", {"form": form})
+
+
+@staff_member_required(login_url="web:administrativo_login")
+def admin_dashboard(request):
+    """Panel institucional con indicadores operativos del sistema."""
+    organizaciones = Hermandad.objects.filter(activa=True).order_by("nombre")
+    if not request.user.is_superuser:
+        organizaciones = organizaciones.filter(
+            administradores_asignados__usuario=request.user,
+            administradores_asignados__activo=True,
+        ).distinct()
+    organizaciones_disponibles = list(organizaciones)
+
+    organizacion_id = request.GET.get("organizacion", "").strip()
+    if not request.user.is_superuser and organizacion_id not in {
+        str(organizacion.pk) for organizacion in organizaciones_disponibles
+    }:
+        organizacion_id = ""
+    if organizacion_id.isdigit():
+        organizaciones = organizaciones.filter(pk=organizacion_id)
+
+    organizacion_ids = organizaciones.values_list("pk", flat=True)
+    devotos = Devoto.objects.filter(hermandad_id__in=organizacion_ids)
+    turnos = TurnoRecorrido.objects.filter(hermandad_id__in=organizacion_ids, activa=True)
+    comunicados = Comunicado.objects.filter(
+        Q(hermandad_id__in=organizacion_ids) | Q(hermandad__isnull=True),
+        enviado_en__isnull=False,
+    )
+
+    fecha_desde = parse_date(request.GET.get("desde", ""))
+    fecha_hasta = parse_date(request.GET.get("hasta", ""))
+    if fecha_desde:
+        devotos = devotos.filter(creado_en__date__gte=fecha_desde)
+        comunicados = comunicados.filter(creado_en__date__gte=fecha_desde)
+    if fecha_hasta:
+        devotos = devotos.filter(creado_en__date__lte=fecha_hasta)
+        comunicados = comunicados.filter(creado_en__date__lte=fecha_hasta)
+
+    estado = request.GET.get("estado", "").strip()
+    if estado == "con_cuenta":
+        devotos = devotos.filter(cuenta__isnull=False)
+    elif estado == "sin_cuenta":
+        devotos = devotos.filter(cuenta__isnull=True)
+
+    organizaciones_lista = list(organizaciones)
+    organizacion_visual = organizaciones_lista[0] if len(organizaciones_lista) == 1 else None
+    color_primario, color_acento = _dashboard_brand_colors(organizacion_visual)
+    color_texto = _dashboard_text_color(
+        organizacion_visual,
+        color_primario,
+        color_acento,
+    )
+    dashboard_theme = {
+        "primary": color_texto,
+        "accent": color_acento,
+        "bar_primary": color_primario,
+        "bar_accent": color_acento,
+        "bar_primary_text": "#ffffff" if _dashboard_luminance(color_primario) < 150 else "#111111",
+        "text": color_texto,
+        "primary_text": "#ffffff" if _dashboard_luminance(color_texto) < 150 else "#111111",
+        "accent_text": "#ffffff" if _dashboard_luminance(color_acento) < 150 else "#111111",
+        "organization_name": organizacion_visual.nombre if organizacion_visual else "",
+    }
+    devotos_recientes = devotos.select_related("hermandad").order_by("-creado_en")[:8]
+    comunicados_recientes = comunicados.select_related("hermandad").order_by("-creado_en")[:6]
+    usuario_modelo = get_user_model()
+    administradores_ids = AdministradorOrganizacion.objects.filter(
+        hermandad_id__in=organizacion_ids,
+        activo=True,
+    ).values_list("usuario_id", flat=True)
+    if request.user.is_superuser:
+        accesos_admin = usuario_modelo.objects.filter(is_staff=True)
+    else:
+        accesos_admin = usuario_modelo.objects.filter(
+            is_staff=True,
+            pk__in=administradores_ids,
+        )
+    accesos_admin = (
+        accesos_admin.exclude(last_login__isnull=True)
+        .order_by("-last_login")[:5]
+    )
+    turnos_ocupados = turnos.filter(inscripciones__isnull=False).distinct().count()
+    turnos_totales = turnos.count()
+    turnos_disponibles = max(turnos_totales - turnos_ocupados, 0)
+    ocupacion_porcentaje = round((turnos_ocupados / turnos_totales) * 100) if turnos_totales else 0
+
+    org_stats = []
+    max_devotos = 1
+    for organizacion in organizaciones_lista:
+        cantidad = devotos.filter(hermandad=organizacion).count()
+        max_devotos = max(max_devotos, cantidad)
+        color_organizacion, _ = _dashboard_brand_colors(organizacion)
+        org_stats.append(
+            {
+                "nombre": organizacion.nombre,
+                "devotos": cantidad,
+                "color": color_organizacion,
+            }
+        )
+    total_devotos_dashboard = sum(stat["devotos"] for stat in org_stats)
+    for stat in org_stats:
+        stat["porcentaje"] = round((stat["devotos"] / max_devotos) * 100)
+        stat["porcentaje_total"] = round(
+            (stat["devotos"] / total_devotos_dashboard) * 100
+        ) if total_devotos_dashboard else 0
+
+    pie_segments = []
+    pie_angle = 0
+    if total_devotos_dashboard:
+        for stat in org_stats:
+            siguiente_angulo = pie_angle + ((stat["devotos"] / total_devotos_dashboard) * 360)
+            pie_segments.append(
+                f'{stat["color"]} {pie_angle:.2f}deg {siguiente_angulo:.2f}deg'
+            )
+            pie_angle = siguiente_angulo
+    pie_gradient = (
+        f'conic-gradient({", ".join(pie_segments)})'
+        if pie_segments
+        else "conic-gradient(#eadff0 0deg 360deg)"
+    )
+
+    fecha_fin = fecha_hasta or timezone.localdate()
+    fecha_inicio = fecha_desde or (fecha_fin - timedelta(days=13))
+    if fecha_inicio > fecha_fin:
+        fecha_inicio, fecha_fin = fecha_fin, fecha_inicio
+    if (fecha_fin - fecha_inicio).days > 30:
+        fecha_inicio = fecha_fin - timedelta(days=30)
+    registros_por_fecha = defaultdict(int)
+    for creado_en in devotos.values_list("creado_en", flat=True):
+        registros_por_fecha[timezone.localtime(creado_en).date()] += 1
+    max_registros = max(
+        1,
+        max(
+            registros_por_fecha.get(fecha, 0)
+            for fecha in (
+                fecha_inicio + timedelta(days=i)
+                for i in range((fecha_fin - fecha_inicio).days + 1)
+            )
+        ),
+    )
+    registro_stats = []
+    fecha_actual = fecha_inicio
+    while fecha_actual <= fecha_fin:
+        cantidad = registros_por_fecha.get(fecha_actual, 0)
+        registro_stats.append(
+            {
+                "fecha": fecha_actual.strftime("%d/%m"),
+                "registros": cantidad,
+                "porcentaje": round((cantidad / max_registros) * 100),
+            }
+        )
+        fecha_actual += timedelta(days=1)
+
+    gps_activos = 0
+    gps_inactivos = 0
+    gps_sin_configuracion = 0
+    gps_limite = timezone.now() - timedelta(
+        minutes=getattr(settings, "GPS_MAX_POSITION_AGE_MINUTES", 5)
+    )
+    for organizacion in organizaciones_lista:
+        if not organizacion.gps_activo or not organizacion.traccar_device_id:
+            gps_sin_configuracion += 1
+        elif (
+            organizacion.ultima_posicion_turno_procesada_en
+            and organizacion.ultima_posicion_turno_procesada_en >= gps_limite
+        ):
+            gps_activos += 1
+        else:
+            gps_inactivos += 1
+
+    cuentas_sin_consentimiento = devotos.filter(acepta_privacidad=False).count()
+    alertas = []
+    if gps_inactivos:
+        alertas.append({"tipo": "warning", "texto": f"{gps_inactivos} organizacion(es) tienen el GPS inactivo o sin actualizacion reciente."})
+    if gps_sin_configuracion:
+        alertas.append({"tipo": "info", "texto": f"{gps_sin_configuracion} organizacion(es) necesitan configurar su dispositivo GPS."})
+    if turnos_totales and turnos_disponibles == 0:
+        alertas.append({"tipo": "danger", "texto": "No hay turnos disponibles en las organizaciones filtradas."})
+    if cuentas_sin_consentimiento:
+        alertas.append({"tipo": "warning", "texto": f"{cuentas_sin_consentimiento} devoto(s) no tienen consentimiento de privacidad registrado."})
+
+    if request.GET.get("export") == "csv":
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="tradicion-viva-indicadores.csv"'
+        response.write("\\ufeff")
+        writer = csv.writer(response)
+        writer.writerow(["TRADICION VIVA - Indicadores administrativos"])
+        writer.writerow(["Indicador", "Valor"])
+        writer.writerow(["Devotos registrados", devotos.count()])
+        writer.writerow(["Organizaciones activas", len(organizaciones_lista)])
+        writer.writerow(["Turnos totales", turnos_totales])
+        writer.writerow(["Turnos ocupados", turnos_ocupados])
+        writer.writerow(["Turnos disponibles", turnos_disponibles])
+        writer.writerow(["Ocupacion de turnos (%)", ocupacion_porcentaje])
+        writer.writerow(["GPS activos", gps_activos])
+        writer.writerow(["GPS inactivos", gps_inactivos])
+        writer.writerow(["GPS sin configuracion", gps_sin_configuracion])
+        writer.writerow(["Cuentas sin consentimiento", cuentas_sin_consentimiento])
+        writer.writerow([])
+        writer.writerow(["Registros por fecha"])
+        writer.writerow(["Fecha", "Registros"])
+        for registro in registro_stats:
+            writer.writerow([registro["fecha"], registro["registros"]])
+        writer.writerow([])
+        writer.writerow(["Devotos por organizacion"])
+        writer.writerow(["Organizacion", "Devotos"])
+        for stat in org_stats:
+            writer.writerow([stat["nombre"], stat["devotos"]])
+        return response
+
+    return render(
+        request,
+        "web/admin_dashboard.html",
+        {
+            "organizaciones": organizaciones_lista,
+            "organizaciones_selector": organizaciones_disponibles,
+            "puede_filtrar_organizaciones": request.user.is_superuser,
+            "organizacion_visual": organizacion_visual,
+            "dashboard_theme": dashboard_theme,
+            "organizacion_seleccionada": organizacion_id,
+            "fecha_desde": request.GET.get("desde", ""),
+            "fecha_hasta": request.GET.get("hasta", ""),
+            "estado_seleccionado": estado,
+            "total_devotos": devotos.count(),
+            "total_organizaciones": len(organizaciones_lista),
+            "turnos_totales": turnos_totales,
+            "turnos_disponibles": turnos_disponibles,
+            "turnos_ocupados": turnos_ocupados,
+            "ocupacion_porcentaje": ocupacion_porcentaje,
+            "total_comunicados": comunicados.count(),
+            "gps_activos": gps_activos,
+            "gps_inactivos": gps_inactivos,
+            "gps_sin_configuracion": gps_sin_configuracion,
+            "gps_total": len(organizaciones_lista),
+            "registro_stats": registro_stats,
+            "alertas": alertas,
+            "cuentas_sin_consentimiento": cuentas_sin_consentimiento,
+            "devotos_recientes": devotos_recientes,
+            "comunicados_recientes": comunicados_recientes,
+            "accesos_admin": accesos_admin,
+            "org_stats": org_stats,
+            "mostrar_rueda": request.user.is_superuser and not organizacion_id and len(org_stats) > 1,
+            "pie_gradient": pie_gradient,
+        },
+    )
+
+
+def _enviar_correo_recuperacion(request, cuenta, reset_url):
+    requested_at = timezone.localtime().strftime("%d/%m/%Y %H:%M")
+    logo_url = (
+        f"{settings.PUBLIC_BASE_URL}/static/web/img/tradicion_viva_logo.png"
+        if settings.PUBLIC_BASE_URL
+        else request.build_absolute_uri("/static/web/img/tradicion_viva_logo.png")
+    )
+    text_body = (
+        "Recibimos una solicitud para restablecer tu contraseña de devoto.\n\n"
+        f"Abre este enlace durante la próxima hora:\n{reset_url}\n\n"
+        "Si no solicitaste el cambio, ignora este mensaje."
+    )
+    html_body = render(
+        request,
+        "web/emails/password_reset.html",
+        {"reset_url": reset_url, "requested_at": requested_at, "logo_url": logo_url},
+    ).content.decode("utf-8")
+    email = EmailMultiAlternatives(
+        "Restablecer contraseña - TRADICIÓN VIVA",
+        text_body,
+        settings.DEFAULT_FROM_EMAIL,
+        [cuenta.correo],
+    )
+    email.attach_alternative(html_body, "text/html")
+    email.send(fail_silently=False)
 
 
 def devoto_password_reset(request):
@@ -407,11 +775,18 @@ def devoto_password_reset(request):
                 salt="tradicion-viva-devoto-reset",
                 compress=True,
             )
-            reset_url = request.build_absolute_uri(
-                reverse("web:devoto_password_reset_confirm", kwargs={"token": token})
+            reset_path = reverse(
+                "web:devoto_password_reset_confirm",
+                kwargs={"token": token},
+            )
+            reset_url = (
+                f"{settings.PUBLIC_BASE_URL}{reset_path}"
+                if settings.PUBLIC_BASE_URL
+                else request.build_absolute_uri(reset_path)
             )
             try:
-                send_mail(
+                _enviar_correo_recuperacion(request, cuenta, reset_url)
+                """
                     "Restablecer contraseña - TRADICIÓN VIVA",
                     (
                         "Recibimos una solicitud para restablecer tu contraseña de devoto.\n\n"
@@ -422,6 +797,7 @@ def devoto_password_reset(request):
                     [cuenta.correo],
                     fail_silently=False,
                 )
+                """
             except Exception:
                 logger.exception("No fue posible enviar recuperación de contraseña a %s", cuenta.correo)
         messages.success(
@@ -544,6 +920,7 @@ def seccion_generica(request, slug, seccion):
                     devoto = form.save()
                 request.session.cycle_key()
                 request.session["cuenta_devoto_id"] = devoto.cuenta_id
+                request.session["tradicion_viva_last_activity"] = timezone.now().timestamp()
                 _enviar_comprobante_registro(request, devoto)
                 messages.success(
                     request,
@@ -601,7 +978,7 @@ def comprobante_devoto(request, slug, codigo):
 
     response = HttpResponse(content_type="application/pdf")
     response["Content-Disposition"] = (
-        f'attachment; filename="comprobante_devoto_{devoto.id}_{devoto.hermandad.slug}.pdf"'
+        f'attachment; filename="comprobante_devoto_{devoto.numero_registro}_{devoto.hermandad.slug}.pdf"'
     )
     response["Cache-Control"] = "private, no-store"
 
@@ -876,6 +1253,15 @@ def limpiar_entrega_turno(request, slug, inscripcion_id):
         numero_turno = inscripcion.turno.numero
         nombre_devoto = inscripcion.devoto.nombre_completo
         if not ya_pendiente:
+            registrar_actividad(
+                request,
+                "eliminar_inscripcion_turno",
+                f"Se eliminó la inscripción del Turno {numero_turno} de {nombre_devoto}.",
+                tipo=ActividadAdministrativa.CAMBIO_IMPORTANTE,
+                hermandad=hermandad,
+                objeto=inscripcion,
+                detalles={"turno": numero_turno, "devoto": nombre_devoto},
+            )
             inscripcion.delete()
 
     if ya_pendiente:
@@ -1018,6 +1404,15 @@ def eliminar_turno(request, slug, turno_id):
     _validar_acceso_organizacion_staff(request, h)
     turno = get_object_or_404(TurnoRecorrido, id=turno_id, hermandad=h)
     with transaction.atomic():
+        registrar_actividad(
+            request,
+            "eliminar_turno",
+            f"Se eliminó el Turno {turno.numero} ({turno.nombre_turno}).",
+            tipo=ActividadAdministrativa.CAMBIO_IMPORTANTE,
+            hermandad=h,
+            objeto=turno,
+            detalles={"numero": turno.numero, "pieza": turno.pieza},
+        )
         turno.delete()
         quedan_turnos_activos = TurnoRecorrido.objects.filter(
             hermandad=h,

@@ -166,6 +166,14 @@ def generar_comprobante_devoto(stream, devoto, qr_url):
         "Registro de Devoto",
     )
 
+    pdf.setFillColor(accent)
+    pdf.setFont("Helvetica-Bold", 8.5)
+    pdf.drawRightString(
+        right,
+        page_h - 39 * mm,
+        f"DEVOTO-{devoto.numero_registro}",
+    )
+
     # =========================================================
     # IDENTIFICACIÓN - SIN FRANJAS NEGRAS
     # =========================================================

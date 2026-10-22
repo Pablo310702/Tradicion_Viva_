@@ -62,10 +62,8 @@
     a{ color:inherit; text-decoration:none; }
     img{ max-width:100%; }
 
-    .topbar{ height:5px; background:linear-gradient(90deg,var(--brand-primary-deep),var(--brand-primary),var(--brand-lilac),var(--brand-cream)); }
-
    header{
-  background:#a441a6;
+  background:#552583;
   border-bottom:1px solid #e5d9e8;
 }
 
@@ -119,17 +117,17 @@
   color:var(--brand-primary-deep);
 }
 
-    .brand-home{
+.brand-home{
   display:inline-flex;
   align-items:center;
   justify-content:center;
   gap:12px;
-  color:var(--brand-primary-deep);
+  color:#fff;
   text-decoration:none;
 }
 
 .brand-home:hover{
-  color:var(--brand-primary);
+  color:#fff;
 }
 
     .brand-logo{
@@ -348,6 +346,17 @@
     .message.success{ background:#15321d; border-color:#2f7040; color:#d9ffe1; }
     .message.error{ background:#3a1717; border-color:#8f3b3b; color:#ffe2e2; }
 
+    .system-error{max-width:720px;margin:48px auto;padding:54px 28px;text-align:center;background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:0 12px 30px rgba(66,25,78,.10)}
+    .system-error-code{font-size:64px;font-weight:800;color:var(--brand-primary);line-height:1}
+    .system-error h1{margin:18px 0 8px;color:var(--brand-primary-deep)}
+    .system-error p{color:var(--muted);font-size:17px}
+    .error-action{display:inline-block;margin-top:14px;padding:12px 20px;border-radius:9px;background:var(--brand-primary);color:#fff;font-weight:800}
+    .form-loading{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;background:rgba(43,33,48,.28);backdrop-filter:blur(2px)}
+    .form-loading[hidden]{display:none}
+    .form-loading-card{padding:18px 24px;border-radius:14px;background:#fff;border:1px solid var(--border);box-shadow:0 12px 30px rgba(43,33,48,.18);color:var(--brand-primary-deep);font-weight:700}
+    .form-loading-card::before{content:"";display:inline-block;width:14px;height:14px;margin-right:9px;border:2px solid #d9c6df;border-top-color:var(--brand-primary);border-radius:50%;vertical-align:-2px;animation:form-spin .7s linear infinite}
+    @keyframes form-spin{to{transform:rotate(360deg)}}
+
     footer{
       border-top:1px solid var(--theme-border, #dfa3ef);
       background:var(--theme-topbar, #573264);
@@ -380,6 +389,10 @@
       opacity:0.95;
     }
     .footer-contact a:hover{ text-decoration:underline; }
+    .footer-meta{ display:flex; flex-direction:column; gap:4px; }
+    .footer-links{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+    .footer-links a{ color:inherit; text-decoration:none; }
+    .footer-links a:hover{ text-decoration:underline; }
 
     @media (max-width:1050px){
       .header-inner{ justify-content:flex-start; padding-right:76px; }
@@ -413,8 +426,6 @@
   {% block extra_css %}{% endblock %} 
 </head>
 <body>
-  <div class="topbar" {% block topbar_style %}{% endblock %}></div>
-
   <header>
     <div class="header-inner">
       <div class="brand">
@@ -443,10 +454,32 @@
 
   <footer>
     <div class="footer-inner">
-      <div class="footer-brand">TRADICIÓN VIVA</div>
-      <div>Desarrollado por Rafael Alvarez</div>
+      <div class="footer-meta">
+        <div class="footer-brand">TRADICI&Oacute;N VIVA</div>
+        <div>Rafael Alvarez</div>
+      </div>
+      <div class="footer-links">
+        <a href="mailto:tradicionvivagt@gmail.com">tradicionvivagt@gmail.com</a>
+        <a href="{% url 'web:privacidad' %}">Pol&iacute;tica de privacidad</a>
+        <a href="{% url 'web:calidad' %}">Pol&iacute;ticas de calidad</a>
+      </div>
     </div>
   </footer>
 </body>
+<script>
+(() => {
+  document.querySelectorAll('form[data-loading-form]').forEach((form) => {
+    form.addEventListener('submit', () => {
+      if (!form.checkValidity()) return;
+      const submit = form.querySelector('button[type="submit"]');
+      if (submit) { submit.disabled = true; submit.textContent = 'Procesando…'; }
+      const loading = document.createElement('div');
+      loading.className = 'form-loading';
+      loading.innerHTML = '<div class="form-loading-card" role="status">Procesando la solicitud…</div>';
+      document.body.appendChild(loading);
+    });
+  });
+})();
+</script>
 </html>
  

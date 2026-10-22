@@ -693,6 +693,53 @@ style="background: var(--theme-accent, #d4af37);"
   }
 
 
+  .password-field {
+    position: relative;
+  }
+
+
+  .password-input-wrap {
+    position: relative;
+  }
+
+
+  .password-input-wrap input {
+    padding-right: 52px !important;
+  }
+
+
+  .password-toggle {
+    position: absolute;
+    right: 8px;
+    top: 3px;
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #cfcfcf;
+    cursor: pointer;
+  }
+
+
+  .password-toggle:hover,
+  .password-toggle:focus-visible {
+    color: var(--accent);
+    background: rgba(255, 255, 255, .08);
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+
+  .password-toggle svg {
+    width: 20px;
+    height: 20px;
+    pointer-events: none;
+  }
+
+
   .form-grid select:disabled {
     opacity: .55;
     cursor: not-allowed;
@@ -1698,8 +1745,10 @@ style="background: var(--theme-accent, #d4af37);"
                   class="video-frame"
                   controls
                   preload="metadata"
+                  playsinline
+                  data-media-title="{{ video.titulo|escapejs }}"
                 >
-                  <source src="{{ video.video.url }}">
+                  <source src="{{ video.video.url }}?v={{ video.video.size }}" type="video/mp4">
                   Tu navegador no puede reproducir este video.
                 </video>
 
@@ -1794,8 +1843,9 @@ style="background: var(--theme-accent, #d4af37);"
 
               {% if marcha.audio %}
 
-                <audio controls preload="metadata">
+                <audio controls preload="metadata" data-media-title="{{ marcha.titulo|escapejs }}">
 
+                  {# Dejamos que el navegador detecte mp3, wav, ogg o m4a por la extensión. #}
                   <source src="{{ marcha.audio.url }}">
 
                   Tu navegador no puede reproducir este audio.
@@ -1874,6 +1924,7 @@ style="background: var(--theme-accent, #d4af37);"
           class="registro-form"
           id="registroForm"
           method="post"
+          data-loading-form
           novalidate
         >
 
@@ -2109,11 +2160,26 @@ style="background: var(--theme-accent, #d4af37);"
             </label>
 
 
-            <label>
+            <label class="password-field">
 
               <span>Contraseña</span>
 
-              {{ form.password1 }}
+              <div class="password-input-wrap">
+                {{ form.password1 }}
+
+                <button
+                  class="password-toggle"
+                  type="button"
+                  data-password-toggle
+                  aria-label="Mostrar contraseña"
+                  title="Mostrar contraseña"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path d="M2.5 12s3.5-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.5 5.5-9.5 5.5S2.5 12 2.5 12Z"></path>
+                    <circle cx="12" cy="12" r="2.5"></circle>
+                  </svg>
+                </button>
+              </div>
 
               {% for error in form.password1.errors %}
                 <small class="field-error">
@@ -2124,11 +2190,26 @@ style="background: var(--theme-accent, #d4af37);"
             </label>
 
 
-            <label>
+            <label class="password-field">
 
               <span>Confirmar contraseña</span>
 
-              {{ form.password2 }}
+              <div class="password-input-wrap">
+                {{ form.password2 }}
+
+                <button
+                  class="password-toggle"
+                  type="button"
+                  data-password-toggle
+                  aria-label="Mostrar contraseña"
+                  title="Mostrar contraseña"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path d="M2.5 12s3.5-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.5 5.5-9.5 5.5S2.5 12 2.5 12Z"></path>
+                    <circle cx="12" cy="12" r="2.5"></circle>
+                  </svg>
+                </button>
+              </div>
 
               {% for error in form.password2.errors %}
                 <small class="field-error">
@@ -2179,7 +2260,7 @@ style="background: var(--theme-accent, #d4af37);"
                   <label class="measure-value">
 
                     <span>
-                      Medida registrada
+                      Medida registrada (m)
                     </span>
 
                     <input
@@ -2769,7 +2850,7 @@ style="background: var(--theme-accent, #d4af37);"
 
 
     resultLabel.textContent =
-      `${(measureCm / 100).toFixed(2)} m (${measureCm.toFixed(1)} cm)`;
+      `${(measureCm / 100).toFixed(2)} m`;
 
 
     pixelLabel.textContent =
@@ -2949,7 +3030,7 @@ style="background: var(--theme-accent, #d4af37);"
 
 
         output.value =
-          `${(measureCm / 100).toFixed(2)} m (${measureCm.toFixed(1)} cm)`;
+          `${(measureCm / 100).toFixed(2)} m`;
 
 
         closeMeasure();
@@ -3062,13 +3143,38 @@ style="background: var(--theme-accent, #d4af37);"
     if (Number.isFinite(cm)) {
 
       output.value =
-        `${(cm / 100).toFixed(2)} m (${cm.toFixed(1)} cm)`;
+        `${(cm / 100).toFixed(2)} m`;
 
     }
 
   }
 
 })();
+
+
+document.querySelectorAll("[data-password-toggle]").forEach(toggle => {
+  const input = toggle.parentElement.querySelector("input");
+  if (!input) return;
+
+  toggle.addEventListener("click", () => {
+    const visible = input.type === "text";
+    input.type = visible ? "password" : "text";
+    toggle.setAttribute("aria-label", visible ? "Mostrar contraseña" : "Ocultar contraseña");
+    toggle.setAttribute("title", visible ? "Mostrar contraseña" : "Ocultar contraseña");
+  });
+});
+
+// Los controles HTML5 pueden mostrarse aunque el archivo no exista o el
+// navegador no pueda decodificarlo. Informamos el problema y dejamos el
+// enlace externo disponible cuando la organización lo haya configurado.
+document.querySelectorAll("audio[data-media-title], video[data-media-title]").forEach(media => {
+  media.addEventListener("error", () => {
+    const aviso = document.createElement("p");
+    aviso.className = "empty-state media-error";
+    aviso.textContent = `No se pudo cargar ${media.dataset.mediaTitle || "este archivo multimedia"}.`;
+    media.replaceWith(aviso);
+  });
+});
 
 </script>
 

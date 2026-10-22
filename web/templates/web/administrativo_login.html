@@ -263,8 +263,66 @@
 
     box-shadow:0 10px 24px rgba(66,25,78,.20);
   }
+  .auth-submit:disabled{cursor:wait;opacity:.72;transform:none;}
+
+  .auth-password-wrap{position:relative;}
+  .auth-password-wrap input{padding-right:58px;}
+  .auth-password-toggle{position:absolute;top:50%;right:10px;width:38px;height:38px;display:grid;place-items:center;transform:translateY(-50%);border:0;border-radius:8px;background:transparent;color:#743a8b;cursor:pointer;}
+  .auth-password-toggle:hover,.auth-password-toggle:focus-visible{background:#f1eaf4;outline:2px solid #743a8b;outline-offset:2px;}
+  .auth-password-toggle svg{width:21px;height:21px;pointer-events:none;}
+  .auth-loading{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(44,22,52,.55);backdrop-filter:blur(3px);}
+  .auth-loading[hidden]{display:none;}
+  .auth-loading-card{min-width:230px;padding:24px 28px;border-radius:18px;background:#fff;text-align:center;box-shadow:0 18px 50px rgba(35,15,43,.28);}
+  .auth-procession{position:relative;width:150px;height:54px;margin:0 auto 10px;overflow:hidden;}
+  .auth-procession::before{content:"";position:absolute;left:18px;right:18px;bottom:8px;height:3px;border-radius:99px;background:#d8c8dc;}
+  .auth-cucurucho{position:absolute;bottom:10px;left:8px;font-size:31px;animation:auth-procession-walk 2.8s ease-in-out infinite alternate;}
+  .auth-incensario{position:absolute;bottom:15px;left:47px;font-size:23px;transform-origin:top center;animation:auth-incense-swing .7s ease-in-out infinite alternate;}
+  @keyframes auth-procession-walk{from{transform:translateX(0)}to{transform:translateX(88px)}}
+  @keyframes auth-incense-swing{from{transform:rotate(-16deg)}to{transform:rotate(16deg)}}
+  @media (prefers-reduced-motion:reduce){.auth-cucurucho,.auth-incensario{animation:none}.auth-cucurucho{left:58px}}
 
   .auth-divider{
+  .auth-procession{position:relative;width:250px;height:180px;margin:0 auto;overflow:visible;}
+  .auth-procession-art{display:none;}
+  .auth-cucurucho-image{position:absolute;z-index:2;left:50%;bottom:24px;width:108px;height:132px;object-fit:contain;object-position:center bottom;transform:translateX(-50%);animation:auth-image-walk 2.4s ease-in-out infinite alternate;}
+  .auth-progress-track{position:absolute;z-index:1;left:10px;right:10px;bottom:14px;height:4px;border-radius:99px;background:#d8c6dd;overflow:hidden;}
+  .auth-progress-track .auth-progress-fill{display:block;width:0;height:100%;border:0;border-radius:99px;background:#743a8b;box-shadow:0 0 7px rgba(116,58,139,.45);animation:auth-progress-bar 2.4s linear forwards;}
+  @keyframes auth-image-walk{0%{left:25%;transform:translateX(-50%) translateY(0) rotate(-1deg)}50%{transform:translateX(-50%) translateY(-3px) rotate(1deg)}100%{left:75%;transform:translateX(-50%) translateY(0) rotate(-1deg)}}
+  @keyframes auth-progress-bar{to{width:100%;}}
+  @media (prefers-reduced-motion:reduce){.auth-cucurucho-image{left:50%;animation:none;transform:translateX(-50%)}.auth-progress-track .auth-progress-fill{animation:none;width:100%;}}
+  .auth-loading{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:#fff;}
+  .auth-loading-card{min-width:0;padding:0;background:#fff;text-align:center;box-shadow:none;}
+  .auth-procession{width:210px;height:95px;margin:0 auto;overflow:visible;}
+  .auth-procession-art{width:210px;height:95px;overflow:visible;}
+  .auth-progress-fill{fill:none;stroke:#743a8b;stroke-width:4;stroke-linecap:round;stroke-dasharray:156;stroke-dashoffset:156;animation:auth-progress 2.4s linear forwards;filter:drop-shadow(0 0 2px rgba(116,58,139,.35));}
+  @keyframes auth-progress{to{stroke-dashoffset:0}}
+  @keyframes auth-walk{from{transform:translateX(-70px) scale(1.35)}to{transform:translateX(70px) scale(1.35)}}
+  @media (prefers-reduced-motion:reduce){.auth-progress-fill{animation:none;stroke-dashoffset:0}.auth-walker{transform:translateX(0)}}
+  .auth-procession{width:180px;height:82px;margin:0 auto 4px;overflow:visible;}
+  .auth-procession::before{display:none;}
+  .auth-procession-art{width:180px;height:82px;overflow:visible;}
+  .auth-procession-line{fill:none;stroke:#d4bfd9;stroke-width:3.5;stroke-linecap:round;}
+  .auth-walker{animation:auth-walk 3.2s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:center bottom;}
+  .auth-cucurucho-body{animation:auth-bob .55s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:center bottom;}
+  .auth-leg path{fill:none;stroke:#2c2030;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;}
+  .auth-leg-back{animation:auth-step-back .55s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:top center;}
+  .auth-leg-front{animation:auth-step-front .55s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:top center;}
+  .auth-robe{fill:#69327f;}
+  .auth-sash{fill:#ead8c7;}
+  .auth-face{fill:#9d5b3e;}
+  .auth-veil{fill:#f7f4f0;}
+  .auth-hood{fill:#d8c7dc;}
+  .auth-arm{fill:#69327f;transform-box:fill-box;transform-origin:left center;animation:auth-arm-swing .8s ease-in-out infinite alternate;}
+  .auth-chain path{fill:none;stroke:#a47742;stroke-width:1.4;stroke-linecap:round;}
+  .auth-chain{transform-box:fill-box;transform-origin:left center;animation:auth-chain-swing .8s ease-in-out infinite alternate;}
+  .auth-censer path{fill:#b88a4b;stroke:#7b5428;stroke-width:1;}
+  @keyframes auth-walk{from{transform:translateX(-70px)}to{transform:translateX(70px)}}
+  @keyframes auth-bob{from{transform:translateY(0)}to{transform:translateY(-2px)}}
+  @keyframes auth-step-back{from{transform:rotate(15deg)}to{transform:rotate(-15deg)}}
+  @keyframes auth-step-front{from{transform:rotate(-15deg)}to{transform:rotate(15deg)}}
+  @keyframes auth-arm-swing{from{transform:rotate(-7deg)}to{transform:rotate(8deg)}}
+  @keyframes auth-chain-swing{from{transform:rotate(-12deg)}to{transform:rotate(12deg)}}
+  @media (prefers-reduced-motion:reduce){.auth-walker,.auth-cucurucho-body,.auth-leg-back,.auth-leg-front,.auth-arm,.auth-chain{animation:none}.auth-walker{transform:translateX(0)}}
     display:flex;
     align-items:center;
     gap:14px;
@@ -348,7 +406,60 @@
     }
   }
 
-</style>
+  /* Loader final: referencia limpia en blanco con personaje completo y barra visible. */
+  .auth-loading .auth-procession{position:relative;width:250px;height:190px;margin:0 auto;overflow:visible;}
+  .auth-loading .auth-procession-art{display:none;}
+  .auth-loading .auth-cucurucho-image{position:absolute;z-index:2;left:25%;bottom:28px;width:120px;height:145px;object-fit:contain;object-position:center bottom;transform:translateX(-50%);animation:auth-image-walk-final 2.4s linear forwards;}
+  .auth-loading .auth-progress-track{position:absolute;z-index:1;left:10px;right:10px;bottom:14px;height:4px;border-radius:99px;background:#d8c6dd;overflow:hidden;}
+  .auth-loading .auth-progress-track .auth-progress-fill{display:block;width:0;height:100%;border:0;border-radius:99px;background:#743a8b;box-shadow:0 0 7px rgba(116,58,139,.45);animation:auth-progress-bar-final 2.4s linear forwards;}
+  @keyframes auth-image-walk-final{0%{left:25%;transform:translateX(-50%) translateY(0) rotate(-1deg)}45%{transform:translateX(-50%) translateY(-4px) rotate(1deg)}100%{left:75%;transform:translateX(-50%) translateY(0) rotate(-1deg)}}
+  @keyframes auth-progress-bar-final{from{width:0}to{width:100%}}
+  @media (prefers-reduced-motion:reduce){.auth-loading .auth-cucurucho-image{left:50%;animation:none;transform:translateX(-50%)}.auth-loading .auth-progress-track .auth-progress-fill{animation:none;width:100%;}}
+
+  /* Corrección final de recorte y movimiento del loader. */
+  .auth-loading{overflow:visible;}
+  .auth-loading-card{overflow:visible;}
+  .auth-loading .auth-procession{display:block;position:relative;width:250px;height:210px;min-height:210px;margin:0 auto;overflow:visible;}
+  .auth-loading .auth-cucurucho-image{display:block;position:absolute;z-index:2;top:4px;bottom:auto;left:24%;width:128px;height:170px;object-fit:contain;object-position:center center;animation:auth-image-walk-final 3.6s ease-in-out infinite alternate;}
+  .auth-loading .auth-progress-track{position:absolute;z-index:3;left:10px;right:10px;bottom:18px;height:5px;border-radius:99px;background:#d8c6dd;overflow:hidden;}
+  .auth-loading .auth-progress-track .auth-progress-fill{display:block;position:relative;width:0;height:100%;border:0;border-radius:99px;background:#743a8b;box-shadow:0 0 8px rgba(116,58,139,.55);animation:auth-progress-bar-final 3.6s linear forwards;}
+  .auth-loading .auth-progress-track .auth-progress-fill::after{content:"";position:absolute;top:-3px;right:-3px;width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 0 9px 3px #743a8b;}
+  .auth-loading .auth-progress-track::after{content:"";position:absolute;top:-4px;left:0;width:13px;height:13px;border-radius:50%;background:#fff;box-shadow:0 0 10px 3px rgba(116,58,139,.9);animation:auth-progress-glow 3.6s linear forwards;}
+  @keyframes auth-image-walk-final{0%{left:24%;transform:translateX(-50%) translateY(0) rotate(-1deg)}45%{transform:translateX(-50%) translateY(-5px) rotate(1.5deg)}100%{left:76%;transform:translateX(-50%) translateY(0) rotate(-1deg)}}
+  @keyframes auth-progress-bar-final{from{width:0}to{width:100%}}
+  @keyframes auth-progress-glow{from{left:0}to{left:calc(100% - 13px)}}
+  @media (prefers-reduced-motion:reduce){.auth-loading .auth-cucurucho-image{left:50%;animation:none;transform:translateX(-50%)}.auth-loading .auth-progress-track .auth-progress-fill,.auth-loading .auth-progress-track::after{animation:none;width:100%;left:auto;right:0;}}
+
+  /* Recorrido completo: izquierda -> derecha, con humo del incensario. */
+  .auth-loading .auth-walker-asset{position:absolute;z-index:4;top:2px;left:2%;width:128px;height:170px;animation:auth-walker-cross 3.6s linear forwards;}
+  .auth-loading .auth-cucurucho-image{position:absolute;inset:0;width:128px;height:170px;object-fit:contain;object-position:center center;animation:auth-body-sway .55s ease-in-out infinite alternate;}
+  .auth-loading .auth-smoke{position:absolute;left:-27px;bottom:29px;width:74px;height:68px;pointer-events:none;}
+  .auth-loading .auth-smoke i{position:absolute;display:block;width:22px;height:18px;border-radius:50%;background:rgba(190,177,195,.35);filter:blur(2px);animation:auth-smoke-rise 1.5s ease-out infinite;}
+  .auth-loading .auth-smoke i:nth-child(1){left:38px;bottom:4px;animation-delay:0s;}
+  .auth-loading .auth-smoke i:nth-child(2){left:23px;bottom:18px;width:27px;height:22px;animation-delay:.25s;}
+  .auth-loading .auth-smoke i:nth-child(3){left:42px;bottom:34px;width:19px;height:17px;animation-delay:.5s;}
+  .auth-loading .auth-smoke i:nth-child(4){left:9px;bottom:38px;width:24px;height:20px;animation-delay:.75s;}
+  .auth-loading .auth-progress-track{left:10px;right:10px;bottom:18px;height:5px;}
+  .auth-loading .auth-progress-track .auth-progress-fill{width:0;animation:auth-progress-bar-final 3.6s linear forwards;}
+  .auth-loading .auth-progress-track::after{animation:auth-progress-glow 3.6s linear forwards;}
+  @keyframes auth-walker-cross{from{left:2%;}to{left:70%;}}
+  @keyframes auth-body-sway{from{transform:rotate(-1.2deg) translateY(1px)}to{transform:rotate(1.2deg) translateY(-2px)}}
+  @keyframes auth-smoke-rise{0%{opacity:.05;transform:translate(0,8px) scale(.55)}25%{opacity:.7}100%{opacity:0;transform:translate(-20px,-34px) scale(1.35)}}
+  @media (prefers-reduced-motion:reduce){.auth-loading .auth-walker-asset{left:50%;animation:none;transform:translateX(-50%)}.auth-loading .auth-cucurucho-image,.auth-loading .auth-smoke i{animation:none}.auth-loading .auth-progress-track .auth-progress-fill{animation:none;width:100%;}.auth-loading .auth-progress-track::after{animation:none;left:auto;right:0;}}
+
+  /* El recorrido lo controla el formulario para que siempre avance de verdad. */
+  .auth-loading .auth-walker-asset{left:2%;animation:none !important;will-change:left;}
+  .auth-loading .auth-progress-track .auth-progress-fill{width:0;animation:none !important;will-change:width;}
+  .auth-loading .auth-progress-dot{position:absolute;z-index:2;top:50%;left:0;width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 0 10px 3px rgba(116,58,139,.9);transform:translate(-50%,-50%);will-change:left;}
+  /* Respaldo CSS: el loader también funciona aunque el navegador bloquee scripts inline. */
+  .auth-loading .auth-procession-art,.auth-loading .auth-progress-dot{display:none !important;}
+  .auth-loading .auth-progress-track::after,.auth-loading .auth-progress-track .auth-progress-fill::after{display:none !important;}
+  .auth-loading .auth-walker-asset{left:0;animation:auth-walker-cross-clean 3.6s linear forwards !important;}
+  .auth-loading .auth-progress-track .auth-progress-fill{display:block;width:100% !important;background:#743a8b !important;height:100%;transform:scaleX(0);transform-origin:left center;animation:auth-progress-grow-clean 3.6s linear forwards !important;}
+  @keyframes auth-walker-cross-clean{from{left:0;}to{left:calc(100% - 128px);}}
+  @keyframes auth-progress-grow-clean{from{transform:scaleX(0);}to{transform:scaleX(1);}}
+
+  </style>
 {% endblock %}
 
 
@@ -450,7 +561,12 @@
               Contraseña
             </span>
 
-            {{ form.password }}
+            <span class="auth-password-wrap">
+              {{ form.password }}
+              <button class="auth-password-toggle" type="button" aria-label="Mantén presionado para ver la contraseña" title="Mantén presionado para ver la contraseña">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2.2 12s3.4-5 9.8-5 9.8 5 9.8 5-3.4 5-9.8 5-9.8-5-9.8-5Z"/><circle cx="12" cy="12" r="2.4"/></svg>
+              </button>
+            </span>
 
             {% for error in form.password.errors %}
               <small class="auth-error">
@@ -479,6 +595,35 @@
 
         </form>
 
+        <div class="auth-loading" hidden aria-live="polite">
+          <div class="auth-loading-card">
+            <div class="auth-procession" aria-hidden="true">
+              <span class="auth-walker-asset">
+                <img class="auth-cucurucho-image" src="{% static 'web/img/cucurucho-loader.png' %}" alt="">
+                <span class="auth-smoke" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+              </span>
+              <span class="auth-progress-track"><span class="auth-progress-fill"></span><span class="auth-progress-dot"></span></span>
+              <svg class="auth-procession-art" viewBox="0 0 180 82" role="presentation">
+                <path class="auth-procession-line" d="M12 68H168"/>
+                <path class="auth-progress-fill" d="M12 68H168"/>
+                <g class="auth-walker">
+                  <g class="auth-leg auth-leg-back"><path fill="none" stroke="#2c2030" d="M84 56l-7 12 5 2 10-11"/></g>
+                  <g class="auth-leg auth-leg-front"><path fill="none" stroke="#2c2030" d="M91 56l7 12 6-1-7-13"/></g>
+                  <g class="auth-cucurucho-body">
+                    <path class="auth-robe" fill="#69327f" d="M79 35c4-6 17-6 22 0l8 23H71l8-23Z"/>
+                    <path class="auth-sash" fill="#ead8c7" d="M92 35l7 23h-5l-6-22Z"/>
+                    <circle class="auth-face" fill="#9d5b3e" cx="91" cy="25" r="3.8"/>
+                    <path class="auth-veil" fill="#f7f4f0" d="M84 23c2-4 12-4 14 0l3 16-10-5-10 5 3-16Z"/>
+                    <path class="auth-hood" fill="#6d347f" d="M83 23 91 10l8 13-4-2h-8l-4 2Z"/>
+                    <path class="auth-arm" fill="#69327f" d="M101 37l13 11-2 3-15-8Z"/>
+                    <g class="auth-chain"><path fill="none" stroke="#a47742" d="M112 49c8 3 12 8 17 13"/><g class="auth-censer"><path fill="#b88a4b" stroke="#7b5428" d="M126 61l7 0 3 5-6 5-6-5Z"/><path fill="#b88a4b" stroke="#7b5428" d="M128 59h4v3h-4Z"/></g></g>
+                  </g>
+                </g>
+              </svg>
+            </div>
+          </div>
+        </div>
+
 
         <div class="auth-divider">
           Otras opciones
@@ -505,4 +650,32 @@
 
 </div>
 
-{% endblock %} 
+<script>
+(() => {
+  const form = document.querySelector('form[method="post"]');
+  const password = document.querySelector('.auth-password-wrap input');
+  const toggle = document.querySelector('.auth-password-toggle');
+  const loading = document.querySelector('.auth-loading');
+  if (!form || !password || !toggle) return;
+  const show = () => { password.type = 'text'; };
+  const hide = () => { password.type = 'password'; };
+  toggle.addEventListener('pointerenter', show);
+  toggle.addEventListener('pointerdown', show);
+  toggle.addEventListener('pointerup', hide);
+  toggle.addEventListener('pointerleave', hide);
+  toggle.addEventListener('pointercancel', hide);
+  toggle.addEventListener('blur', hide);
+  form.addEventListener('submit', (event) => {
+    if (!form.checkValidity()) return;
+    // Acceso directo: dejar que el navegador envíe el formulario sin loader ni espera.
+    return;
+    event.preventDefault();
+    if (loading) loading.hidden = false;
+    const submit = form.querySelector('.auth-submit');
+    if (submit) { submit.disabled = true; submit.textContent = 'Ingresando…'; }
+    window.setTimeout(() => form.submit(), 3600);
+  });
+})();
+</script>
+
+{% endblock %}

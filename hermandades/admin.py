@@ -7,6 +7,7 @@ from django.utils.html import format_html
 
 from .models import (
     AdministradorOrganizacion,
+    ActividadAdministrativa,
     Comunicado,
     CuentaDevoto,
     Devoto,
@@ -181,6 +182,23 @@ class AdministradorOrganizacionAdmin(admin.ModelAdmin):
         if obj.activo and not obj.usuario.is_staff:
             obj.usuario.is_staff = True
             obj.usuario.save(update_fields=["is_staff"])
+
+
+@admin.register(ActividadAdministrativa)
+class ActividadAdministrativaAdmin(admin.ModelAdmin):
+    list_display = ("creado_en", "tipo", "accion", "usuario", "hermandad", "descripcion")
+    list_filter = ("tipo", "accion", "hermandad")
+    search_fields = ("descripcion", "modelo", "objeto_id", "usuario__username")
+    readonly_fields = tuple(field.name for field in ActividadAdministrativa._meta.fields)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
 
 
 # =========================================================

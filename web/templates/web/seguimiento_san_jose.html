@@ -239,6 +239,21 @@
     map.fitBounds(linea.getBounds(), { padding: [25, 25] });
   }
 
+  function reajustarMapa() {
+    map.invalidateSize(true);
+    if (ruta.length > 1) {
+      const bounds = L.latLngBounds(ruta);
+      if (bounds.isValid()) map.fitBounds(bounds, { padding: [25, 25] });
+    }
+  }
+
+  map.whenReady(() => {
+    requestAnimationFrame(() => requestAnimationFrame(reajustarMapa));
+  });
+  window.addEventListener("load", reajustarMapa, { once: true });
+  window.addEventListener("resize", reajustarMapa);
+  window.addEventListener("orientationchange", () => setTimeout(reajustarMapa, 150));
+
   function actualizarPanel(turno) {
     document.getElementById("turnoTitulo").textContent = turno.titulo || `Turno ${turno.numero}`;
     document.getElementById("piezaNombre").textContent = turno.pieza || "--";

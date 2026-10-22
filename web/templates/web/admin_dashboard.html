@@ -1,0 +1,155 @@
+{% extends "web/base.html" %}
+
+{% block title %}Panel administrativo | TRADICI&Oacute;N VIVA{% endblock %}
+{% block meta_description %}Panel de indicadores y gesti&oacute;n de TRADICI&Oacute;N VIVA.{% endblock %}
+
+{% block header_actions %}
+  <a class="session-link" href="{% url 'admin:index' %}">Administraci&oacute;n completa</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .dashboard-header{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:22px;flex-wrap:wrap;}
+  .dashboard-header h1{margin:0 0 6px;color:var(--brand-primary-deep);}
+  .dashboard-header p{margin:0;color:var(--muted);}
+  .dashboard-filters{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:22px;padding:16px;border:1px solid var(--border);border-radius:14px;background:var(--card);}
+  .dashboard-filters label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12px;font-weight:800;}
+  .dashboard-filters input,.dashboard-filters select{min-height:38px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--brand-primary-deep);font:inherit;}
+  .dashboard-filters button{min-height:38px;padding:7px 16px;border:0;border-radius:8px;background:var(--brand-primary);color:#fff;font:inherit;font-weight:800;cursor:pointer;}
+  .dashboard-filters a{padding:9px 10px;color:var(--brand-primary);font-size:13px;}
+  .metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:22px;}
+  .metric-card{padding:18px;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:0 8px 18px rgba(66,25,78,.08);}
+  .metric-label{display:block;color:var(--muted);font-size:13px;font-weight:800;}
+  .metric-value{display:block;margin-top:7px;color:var(--brand-primary-deep);font-size:30px;font-weight:900;}
+  .metric-note{display:block;margin-top:5px;color:var(--muted);font-size:12px;}
+  .dashboard-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;margin-bottom:18px;}
+  .dashboard-card{padding:20px;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:0 8px 18px rgba(66,25,78,.06);}
+  .dashboard-card h2{margin:0 0 16px;color:var(--brand-primary-deep);font-size:20px;}
+  .bar-row{display:grid;grid-template-columns:minmax(130px,1fr) 2fr 38px;gap:10px;align-items:center;margin:12px 0;color:var(--muted);font-size:13px;}
+  .bar-track{height:10px;overflow:hidden;border-radius:99px;background:#eadff0;}
+  .bar-fill{height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--brand-lilac),var(--brand-primary));}
+  .bar-fill.green{background:linear-gradient(90deg,#9cc9ad,#3c8058);}
+  .bar-fill.orange{background:linear-gradient(90deg,#f0c47b,#c27a29);}
+  .data-list{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none;}
+  .data-list li{display:flex;justify-content:space-between;gap:12px;padding-bottom:10px;border-bottom:1px solid #eee5f0;color:var(--muted);font-size:14px;}
+  .data-list li:last-child{padding-bottom:0;border-bottom:0;}
+  .data-list strong{color:var(--brand-primary-deep);}
+  .alert-list{display:flex;flex-direction:column;gap:9px;margin:0;padding:0;list-style:none;}
+  .alert-item{padding:11px 13px;border-radius:10px;border-left:4px solid var(--brand-primary);background:#f5eef8;color:var(--brand-primary-deep);font-size:14px;}
+  .alert-item.warning{border-left-color:#c27a29;background:#fff7e9;color:#704614;}
+  .alert-item.danger{border-left-color:#b44747;background:#fff0f0;color:#762a2a;}
+  .alert-item.info{border-left-color:#6386a7;background:#eef5fb;color:#315571;}
+  .empty-data{margin:0;color:var(--muted);font-size:14px;}
+  .export-link{display:inline-flex;align-items:center;min-height:38px;padding:7px 14px;border:1px solid var(--brand-primary);border-radius:8px;color:var(--brand-primary);font-weight:800;}
+  .dashboard-shell .dashboard-header h1,.dashboard-shell .dashboard-card h2,.dashboard-shell .metric-value{color:var(--dashboard-primary);}
+  .dashboard-shell .dashboard-card{border-top:3px solid var(--dashboard-accent);}
+  .dashboard-shell .dashboard-filters button{background:var(--dashboard-bar-primary);color:var(--dashboard-bar-primary-text);}
+  .dashboard-shell .dashboard-filters a,.dashboard-shell .export-link{border-color:var(--dashboard-bar-primary);color:var(--dashboard-primary);}
+  .dashboard-shell .export-link{background:var(--dashboard-bar-primary);color:var(--dashboard-bar-primary-text);}
+  .dashboard-shell .bar-fill{background:linear-gradient(90deg,var(--dashboard-bar-accent),var(--dashboard-bar-primary));}
+  .dashboard-shell .institutional-kicker{color:var(--dashboard-primary);}
+  .dashboard-shell .metric-label,.dashboard-shell .metric-note,.dashboard-shell .bar-row,.dashboard-shell .data-list li{color:var(--dashboard-text);}
+  .pie-layout{display:flex;align-items:center;justify-content:center;gap:28px;flex-wrap:wrap;}
+  .pie-chart{width:220px;height:220px;border-radius:50%;background:var(--pie-gradient);box-shadow:inset 0 0 0 12px #fff,0 8px 18px rgba(66,25,78,.12);}
+  .pie-legend{display:flex;flex-direction:column;gap:9px;min-width:220px;max-width:100%;margin:0;padding:0;list-style:none;}
+  .pie-legend li{display:grid;grid-template-columns:14px minmax(0,1fr) auto;align-items:center;gap:8px;color:var(--dashboard-text);font-size:13px;}
+  .pie-swatch{width:12px;height:12px;border-radius:50%;background:var(--swatch);border:1px solid rgba(0,0,0,.12);}
+  @media (max-width:900px){.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.dashboard-grid{grid-template-columns:1fr;}}
+  @media (max-width:560px){.metric-grid{grid-template-columns:1fr 1fr;}.bar-row{grid-template-columns:1fr 1fr 32px;}.bar-track{grid-column:1 / -1;grid-row:2;}.bar-row strong{grid-column:2;grid-row:1;text-align:right;}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-shell" style="--dashboard-primary:{{ dashboard_theme.primary }};--dashboard-accent:{{ dashboard_theme.accent }};--dashboard-bar-primary:{{ dashboard_theme.bar_primary }};--dashboard-bar-accent:{{ dashboard_theme.bar_accent }};--dashboard-bar-primary-text:{{ dashboard_theme.bar_primary_text }};--dashboard-text:{{ dashboard_theme.text }};--dashboard-primary-text:{{ dashboard_theme.primary_text }};--dashboard-accent-text:{{ dashboard_theme.accent_text }};">
+<section class="dashboard-header">
+  <div>
+    <p class="institutional-kicker">Gesti&oacute;n institucional</p>
+    <h1>Panel administrativo</h1>
+    <p>Indicadores operativos de TRADICI&Oacute;N VIVA{% if dashboard_theme.organization_name %} · {{ dashboard_theme.organization_name }}{% endif %}.</p>
+  </div>
+  <a class="export-link" href="?organizacion={{ organizacion_seleccionada }}&desde={{ fecha_desde }}&hasta={{ fecha_hasta }}&estado={{ estado_seleccionado }}&export=csv">Exportar a Excel (CSV)</a>
+</section>
+
+{% if puede_filtrar_organizaciones %}<form class="dashboard-filters" method="get">
+  <label>Organizaci&oacute;n
+    <select name="organizacion">
+      <option value="">Todas las organizaciones</option>
+      {% for organizacion in organizaciones_selector %}<option value="{{ organizacion.id }}"{% if organizacion_seleccionada == organizacion.id|stringformat:"s" %} selected{% endif %}>{{ organizacion.nombre }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Desde <input type="date" name="desde" value="{{ fecha_desde }}"></label>
+  <label>Hasta <input type="date" name="hasta" value="{{ fecha_hasta }}"></label>
+  <label>Estado
+    <select name="estado">
+      <option value="">Todos</option>
+      <option value="con_cuenta"{% if estado_seleccionado == "con_cuenta" %} selected{% endif %}>Con cuenta</option>
+      <option value="sin_cuenta"{% if estado_seleccionado == "sin_cuenta" %} selected{% endif %}>Sin cuenta</option>
+    </select>
+  </label>
+  <button type="submit">Aplicar filtros</button>
+  <a href="{% url 'web:admin_dashboard' %}">Limpiar</a>
+</form>
+{% endif %}
+
+{% if alertas %}
+<section class="dashboard-card" style="margin-bottom:22px;">
+  <h2>Alertas operativas</h2>
+  <ul class="alert-list">{% for alerta in alertas %}<li class="alert-item {{ alerta.tipo }}">{{ alerta.texto }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+
+<section class="metric-grid" aria-label="Indicadores principales">
+  <article class="metric-card"><span class="metric-label">Devotos registrados</span><strong class="metric-value">{{ total_devotos }}</strong></article>
+  <article class="metric-card"><span class="metric-label">Organizaciones activas</span><strong class="metric-value">{{ total_organizaciones }}</strong></article>
+  <article class="metric-card"><span class="metric-label">Turnos disponibles</span><strong class="metric-value">{{ turnos_disponibles }}</strong><span class="metric-note">{{ ocupacion_porcentaje }}% ocupados</span></article>
+  <article class="metric-card"><span class="metric-label">Turnos ocupados</span><strong class="metric-value">{{ turnos_ocupados }}</strong><span class="metric-note">de {{ turnos_totales }} turnos activos</span></article>
+  <article class="metric-card"><span class="metric-label">Comunicados enviados</span><strong class="metric-value">{{ total_comunicados }}</strong></article>
+  <article class="metric-card"><span class="metric-label">GPS activos</span><strong class="metric-value">{{ gps_activos }}</strong><span class="metric-note">{{ gps_inactivos }} inactivos · {{ gps_sin_configuracion }} sin configurar</span></article>
+</section>
+
+<section class="dashboard-grid">
+  <article class="dashboard-card">
+    <h2>Registros por fecha</h2>
+    {% for stat in registro_stats %}<div class="bar-row"><span>{{ stat.fecha }}</span><div class="bar-track"><div class="bar-fill" style="width:{{ stat.porcentaje }}%;"></div></div><strong>{{ stat.registros }}</strong></div>{% empty %}<p class="empty-data">No hay registros para las fechas seleccionadas.</p>{% endfor %}
+  </article>
+  <article class="dashboard-card">
+    <h2>Estado de ubicaciones GPS</h2>
+    <div class="bar-row"><span>Activos</span><div class="bar-track"><div class="bar-fill green" style="width:{% if gps_total %}{% widthratio gps_activos gps_total 100 %}{% else %}0{% endif %}%;"></div></div><strong>{{ gps_activos }}</strong></div>
+    <div class="bar-row"><span>Inactivos</span><div class="bar-track"><div class="bar-fill orange" style="width:{% if gps_total %}{% widthratio gps_inactivos gps_total 100 %}{% else %}0{% endif %}%;"></div></div><strong>{{ gps_inactivos }}</strong></div>
+    <div class="bar-row"><span>Sin configurar</span><div class="bar-track"><div class="bar-fill" style="width:{% if gps_total %}{% widthratio gps_sin_configuracion gps_total 100 %}{% else %}0{% endif %}%;"></div></div><strong>{{ gps_sin_configuracion }}</strong></div>
+    <p class="metric-note">Total de organizaciones evaluadas: {{ gps_total }}.</p>
+  </article>
+</section>
+
+<section class="dashboard-grid">
+  <article class="dashboard-card">
+    <h2>Devotos por organizaci&oacute;n</h2>
+    {% if mostrar_rueda %}
+      <div class="pie-layout">
+        <div class="pie-chart" style="--pie-gradient:{{ pie_gradient }};" role="img" aria-label="Distribuci&oacute;n de devotos por organizaci&oacute;n"></div>
+        <ul class="pie-legend">
+          {% for stat in org_stats %}<li><span class="pie-swatch" style="--swatch:{{ stat.color }};"></span><span title="{{ stat.nombre }}">{{ stat.nombre|truncatechars:30 }}</span><strong>{{ stat.devotos }} ({{ stat.porcentaje_total }}%)</strong></li>{% empty %}<li class="empty-data">No hay organizaciones disponibles.</li>{% endfor %}
+        </ul>
+      </div>
+    {% else %}
+      {% for stat in org_stats %}<div class="bar-row"><span title="{{ stat.nombre }}">{{ stat.nombre|truncatechars:28 }}</span><div class="bar-track"><div class="bar-fill" style="width:{{ stat.porcentaje }}%;"></div></div><strong>{{ stat.devotos }}</strong></div>{% empty %}<p class="empty-data">No hay organizaciones disponibles.</p>{% endfor %}
+    {% endif %}
+  </article>
+  <article class="dashboard-card">
+    <h2>Accesos recientes de administradores</h2>
+    <ul class="data-list">{% for usuario in accesos_admin %}<li><span>{{ usuario.username }}</span><strong>{{ usuario.last_login|date:"d/m/Y H:i" }}</strong></li>{% empty %}<li class="empty-data">Todav&iacute;a no hay accesos registrados.</li>{% endfor %}</ul>
+  </article>
+</section>
+
+<section class="dashboard-grid">
+  <article class="dashboard-card">
+    <h2>Registros recientes</h2>
+    <ul class="data-list">{% for devoto in devotos_recientes %}<li><span><strong>{{ devoto.primer_nombre }} {{ devoto.primer_apellido }}</strong><br>{{ devoto.hermandad.nombre }}</span><span>{{ devoto.creado_en|date:"d/m/Y H:i" }}</span></li>{% empty %}<li class="empty-data">No hay registros para los filtros seleccionados.</li>{% endfor %}</ul>
+  </article>
+  <article class="dashboard-card">
+    <h2>Comunicados recientes</h2>
+    <ul class="data-list">{% for comunicado in comunicados_recientes %}<li><span><strong>{{ comunicado.asunto }}</strong><br>{{ comunicado.destinatarios_descripcion }}</span><span>{{ comunicado.creado_en|date:"d/m/Y" }}</span></li>{% empty %}<li class="empty-data">No hay comunicados registrados.</li>{% endfor %}</ul>
+  </article>
+</section>
+</div>
+{% endblock %}

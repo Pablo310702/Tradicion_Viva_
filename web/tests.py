@@ -203,6 +203,187 @@ class OrganizationIsolationTests(TestCase):
                 cursor.execute("SELECT set_config('app.current_organization_id', '', false)")
 
 
+class AdminDashboardTests(TestCase):
+    def setUp(self):
+        self.organization_a = Hermandad.objects.create(
+            nombre="Cofradía Rosario",
+            slug="cofradia-rosario-dashboard",
+            activa=True,
+        )
+        self.organization_b = Hermandad.objects.create(
+            nombre="Hermandad Cristo",
+            slug="hermandad-cristo-dashboard",
+            activa=True,
+        )
+        self.superuser = get_user_model().objects.create_superuser(
+            username="dashboard-general",
+            email="dashboard@example.com",
+            password="ClaveAdmin123",
+        )
+
+    def _create_devoto(self, hermandad, dpi, cuenta=None):
+        return Devoto.objects.create(
+            cuenta=cuenta,
+            hermandad=hermandad,
+            dpi=dpi,
+            primer_nombre="Devoto",
+            primer_apellido="Prueba",
+            fecha_nacimiento=date(1990, 1, 1),
+            departamento="Guatemala",
+            municipio="Guatemala",
+            celular="55555555",
+            correo=f"{dpi}@example.com",
+            acepta_privacidad=True,
+        )
+
+    def _create_turno(self, hermandad, numero):
+        return TurnoRecorrido.objects.create(
+            hermandad=hermandad,
+            numero=numero,
+            nombre_turno=f"Turno {numero}",
+            pieza="Marcha de prueba",
+            latitud=14.55,
+            longitud=-90.73,
+            orden_ruta=numero,
+            activa=True,
+        )
+
+    def test_superuser_filters_update_metrics_and_chart_data(self):
+        cuenta = CuentaDevoto.objects.create(correo="con-cuenta@example.com")
+        self._create_devoto(self.organization_a, "1111111111111", cuenta=cuenta)
+        self._create_devoto(self.organization_a, "2222222222222")
+        self._create_devoto(self.organization_b, "3333333333333")
+
+        turno_ocupado = self._create_turno(self.organization_a, 1)
+        self._create_turno(self.organization_a, 2)
+        InscripcionTurno.objects.create(
+            devoto=Devoto.objects.get(dpi="1111111111111"),
+            turno=turno_ocupado,
+        )
+
+        self.client.force_login(self.superuser)
+        response = self.client.get(
+            reverse("web:admin_dashboard"),
+            {
+                "organizacion": self.organization_a.pk,
+                "estado": "con_cuenta",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_devotos"], 1)
+        self.assertEqual(response.context["org_stats"][0]["devotos"], 1)
+        self.assertEqual(sum(item["registros"] for item in response.context["registro_stats"]), 1)
+        self.assertEqual(response.context["turnos_totales"], 2)
+        self.assertEqual(response.context["turnos_ocupados"], 1)
+        self.assertEqual(response.context["turnos_disponibles"], 1)
+        self.assertEqual(response.context["ocupacion_porcentaje"], 50)
+
+        date_filtered = self.client.get(
+            reverse("web:admin_dashboard"),
+            {
+                "organizacion": self.organization_a.pk,
+                "desde": (date.today() + timedelta(days=1)).isoformat(),
+                "hasta": (date.today() + timedelta(days=2)).isoformat(),
+            },
+        )
+        self.assertEqual(date_filtered.context["total_devotos"], 0)
+        self.assertEqual(
+            sum(item["registros"] for item in date_filtered.context["registro_stats"]),
+            0,
+        )
+
+    def test_dashboard_distinguishes_gps_states(self):
+        now = timezone.now()
+        self.organization_a.gps_activo = True
+        self.organization_a.traccar_device_id = "gps-activo"
+        self.organization_a.ultima_posicion_turno_procesada_en = now
+        self.organization_a.save(update_fields=[
+            "gps_activo",
+            "traccar_device_id",
+            "ultima_posicion_turno_procesada_en",
+        ])
+
+        self.organization_b.gps_activo = True
+        self.organization_b.traccar_device_id = "gps-inactivo"
+        self.organization_b.ultima_posicion_turno_procesada_en = now - timedelta(minutes=10)
+        self.organization_b.save(update_fields=[
+            "gps_activo",
+            "traccar_device_id",
+            "ultima_posicion_turno_procesada_en",
+        ])
+
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse("web:admin_dashboard"))
+
+        self.assertEqual(response.context["gps_total"], 2)
+        self.assertEqual(response.context["gps_activos"], 1)
+        self.assertEqual(response.context["gps_inactivos"], 1)
+        self.assertEqual(response.context["gps_sin_configuracion"], 0)
+
+    def test_superuser_can_switch_organizations_and_export_filtered_values(self):
+        self._create_devoto(self.organization_a, "4444444444444")
+        self._create_devoto(self.organization_b, "5555555555555")
+        self.client.force_login(self.superuser)
+
+        selected = self.client.get(
+            reverse("web:admin_dashboard"),
+            {"organizacion": self.organization_b.pk},
+        )
+        self.assertEqual(selected.status_code, 200)
+        self.assertEqual(selected.context["total_organizaciones"], 1)
+        self.assertEqual(selected.context["organizacion_visual"], self.organization_b)
+        self.assertContains(selected, self.organization_b.nombre)
+
+        exported = self.client.get(
+            reverse("web:admin_dashboard"),
+            {"organizacion": self.organization_b.pk, "export": "csv"},
+        )
+        self.assertEqual(exported.status_code, 200)
+        self.assertEqual(exported["Content-Type"], "text/csv; charset=utf-8")
+        self.assertIn("Devotos registrados", exported.content.decode("utf-8-sig"))
+        self.assertIn("1", exported.content.decode("utf-8-sig"))
+
+    def test_superuser_has_global_organization_selector(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(reverse("web:admin_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["organizaciones_selector"]), 2)
+        self.assertTrue(response.context["puede_filtrar_organizaciones"])
+
+    def test_organization_admin_cannot_switch_to_another_organization(self):
+        admin_user = get_user_model().objects.create_user(
+            username="dashboard-organizacion",
+            password="ClaveAdmin123",
+            is_staff=True,
+        )
+        AdministradorOrganizacion.objects.create(
+            usuario=admin_user,
+            hermandad=self.organization_a,
+            activo=True,
+        )
+        self.client.force_login(admin_user)
+
+        response = self.client.get(
+            reverse("web:admin_dashboard"),
+            {"organizacion": self.organization_b.pk},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_organizaciones"], 1)
+        self.assertEqual(response.context["organizacion_visual"], self.organization_a)
+        self.assertEqual(response.context["organizacion_seleccionada"], "")
+        self.assertFalse(response.context["puede_filtrar_organizaciones"])
+
+    def test_devoto_without_administrative_session_cannot_open_dashboard(self):
+        response = self.client.get(reverse("web:admin_dashboard"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("iniciar-sesion/administrativo", response["Location"])
+
+
 class PublicViewsTests(BaseProjectTestCase):
     def test_home_lists_active_organizations(self):
         response = self.client.get(reverse("web:home"))
@@ -1545,6 +1726,6 @@ class AccessAndOrganizationTypeTests(TestCase):
         self.assertRedirects(response, reverse("web:devoto_panel"))
         devoto.refresh_from_db()
         self.assertTrue(devoto.acepta_email)
-        self.assertTrue(devoto.acepta_sms)
+        self.assertFalse(devoto.acepta_sms)
         self.assertTrue(devoto.acepta_whatsapp)
         self.assertTrue(devoto.acepta_comunicaciones)

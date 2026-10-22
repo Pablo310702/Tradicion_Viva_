@@ -1,0 +1,33 @@
+{% extends "web/base.html" %}
+
+{% block title %}Política de privacidad | TRADICIÓN VIVA{% endblock %}
+{% block meta_description %}Política de privacidad y tratamiento de datos de TRADICIÓN VIVA.{% endblock %}
+
+{% block extra_css %}
+<style>
+  .policy-card{max-width:850px;margin:0 auto;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:clamp(24px,5vw,48px);box-shadow:0 12px 28px rgba(66,25,78,.1);}
+  .policy-card h1{margin-top:0;color:var(--brand-primary-deep);}
+  .policy-card h2{margin:28px 0 8px;color:var(--brand-primary);font-size:22px;}
+  .policy-card p,.policy-card li{color:var(--muted);line-height:1.65;}
+</style>
+{% endblock %}
+
+{% block content %}
+<article class="policy-card">
+  <p class="institutional-kicker">Información institucional</p>
+  <h1>Política de privacidad</h1>
+  <p>TRADICIÓN VIVA utiliza los datos proporcionados por sus usuarios para gestionar registros, turnos, comunicaciones y servicios relacionados con las hermandades participantes.</p>
+  <h2>Datos que podemos solicitar</h2>
+  <p>Nombre, documento de identificación, datos de contacto, información de registro y, cuando corresponda, la medida visual necesaria para la organización de turnos.</p>
+  <h2>Uso de la información</h2>
+  <p>La información se utiliza para administrar la participación, enviar comunicaciones autorizadas, generar comprobantes y mejorar la coordinación de las actividades.</p>
+  <h2>Protección y derechos</h2>
+  <p>Se aplican controles de acceso, sesiones protegidas, registro de actividad administrativa y respaldos periódicos. Puedes solicitar consulta, corrección o aclaración sobre tus datos escribiendo a <a href="mailto:tradicionvivagt@gmail.com">tradicionvivagt@gmail.com</a>.</p>
+  <h2>Consentimiento</h2>
+  <p>Antes de completar un registro, la persona debe leer y aceptar esta política. El consentimiento se almacena junto con el registro y puede actualizarse desde el panel de devoto. Las comunicaciones por correo electrónico o WhatsApp solo se envían cuando fueron autorizadas expresamente.</p>
+  <h2>Conservación y eliminación</h2>
+  <p>Los datos se conservan durante el tiempo necesario para administrar la participación en la organización correspondiente. Las solicitudes de actualización o eliminación se revisan por el personal autorizado.</p>
+  <h2>Contacto</h2>
+  <p>TRADICIÓN VIVA · Guatemala · 2026 · <a href="mailto:tradicionvivagt@gmail.com">tradicionvivagt@gmail.com</a></p>
+</article>
+{% endblock %}

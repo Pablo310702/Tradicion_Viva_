@@ -280,6 +280,7 @@
   const turnoCambioDireccion = JSON.parse(document.getElementById("turno-cambio-direccion-data").textContent);
   const gpsActivo = {{ gps_publicable|yesno:"true,false" }};
   const gpsConfigurado = {{ h.gps_configurado|yesno:"true,false" }};
+  const DISTANCIA_DETECCION_TURNO_METROS = 5;
 
   const centroInicial = ruta.length ? ruta[0] : [14.5566, -90.7332];
 
@@ -436,6 +437,24 @@
     const bounds = L.featureGroup(lineasRuta).getBounds();
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [25, 25] });
   }
+
+  // En pantallas pequeñas el contenedor puede cambiar de tamaño después de
+  // inicializar Leaflet. Si no se invalida el tamaño, Leaflet conserva las
+  // coordenadas iniciales y las capas SVG pueden quedar fuera de la vista.
+  function reajustarMapa() {
+    map.invalidateSize(true);
+    if (lineasRuta.length) {
+      const bounds = L.featureGroup(lineasRuta).getBounds();
+      if (bounds.isValid()) map.fitBounds(bounds, { padding: [25, 25] });
+    }
+  }
+
+  map.whenReady(() => {
+    requestAnimationFrame(() => requestAnimationFrame(reajustarMapa));
+  });
+  window.addEventListener("load", reajustarMapa, { once: true });
+  window.addEventListener("resize", reajustarMapa);
+  window.addEventListener("orientationchange", () => setTimeout(reajustarMapa, 150));
 
   function actualizarDato(id, valor) {
     const dato = document.getElementById(id);

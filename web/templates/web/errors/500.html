@@ -1,0 +1,4 @@
+{% extends "web/base.html" %}
+{% block title %}Error del sistema | TRADICIÓN VIVA{% endblock %}
+{% block header_actions %}{% endblock %}
+{% block content %}<section class="system-error"><div class="system-error-code">500</div><h1>Estamos atendiendo una incidencia</h1><p>Ocurrió un error inesperado. Tu información no se ha perdido; intenta nuevamente en unos minutos.</p><a class="error-action" href="{% url 'web:home' %}">Volver al inicio</a></section>{% endblock %}

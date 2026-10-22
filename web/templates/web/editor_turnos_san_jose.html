@@ -305,7 +305,7 @@
                 Editar
               </button>
 
-              <form method="post" action="{% url 'web:eliminar_turno_san_jose' t.id %}">
+              <form method="post" action="{% url 'web:eliminar_turno_san_jose' t.id %}" onsubmit="return confirm('¿Confirmas que deseas eliminar este turno? Esta acción no se puede deshacer.');">
                 {% csrf_token %}
                 <button type="submit" class="btn-small btn-delete">Eliminar</button>
               </form>

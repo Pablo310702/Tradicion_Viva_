@@ -1,0 +1,4 @@
+{% extends "web/base.html" %}
+{% block title %}Página no encontrada | TRADICIÓN VIVA{% endblock %}
+{% block header_actions %}{% endblock %}
+{% block content %}<section class="system-error"><div class="system-error-code">404</div><h1>Página no encontrada</h1><p>La dirección que intentaste abrir no existe o fue movida.</p><a class="error-action" href="{% url 'web:home' %}">Volver al inicio</a></section>{% endblock %}

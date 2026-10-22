@@ -317,7 +317,7 @@
         <span><strong>Celular:</strong><br>{{ devoto.celular }}</span>
         <span><strong>Registro:</strong><br>{{ devoto.creado_en|date:"d/m/Y H:i" }}</span>
         {% if devoto.hermandad.es_hermandad and devoto.medida_hombro_cm %}
-          <span><strong>Medida hasta el hombro:</strong><br>{{ devoto.medida_hombro_cm }} cm</span>
+          <span><strong>Medida hasta el hombro:</strong><br>{{ devoto.medida_hombro_m|floatformat:2 }} m</span>
         {% endif %}
       </div>
 

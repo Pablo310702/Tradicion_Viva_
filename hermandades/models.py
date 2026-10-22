@@ -1,4 +1,5 @@
 from io import BytesIO
+from decimal import Decimal
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -284,6 +285,52 @@ class AdministradorOrganizacion(models.Model):
         return f"{self.usuario.get_username()} → {self.hermandad.nombre}"
 
 
+class ActividadAdministrativa(models.Model):
+    """Auditoría de acciones administrativas y cambios relevantes."""
+
+    ACTIVIDAD = "actividad"
+    CAMBIO_IMPORTANTE = "cambio_importante"
+    TIPO_CHOICES = [
+        (ACTIVIDAD, "Actividad administrativa"),
+        (CAMBIO_IMPORTANTE, "Cambio importante"),
+    ]
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="actividades_administrativas",
+    )
+    hermandad = models.ForeignKey(
+        "Hermandad",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="actividades_administrativas",
+    )
+    tipo = models.CharField(max_length=24, choices=TIPO_CHOICES, default=ACTIVIDAD)
+    accion = models.CharField(max_length=80)
+    modelo = models.CharField(max_length=120, blank=True)
+    objeto_id = models.CharField(max_length=80, blank=True)
+    descripcion = models.TextField()
+    detalles = models.JSONField(default=dict, blank=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-creado_en"]
+        verbose_name = "actividad administrativa"
+        verbose_name_plural = "actividades administrativas"
+        indexes = [
+            models.Index(fields=["tipo", "creado_en"], name="actividad_tipo_fecha_idx"),
+            models.Index(fields=["hermandad", "creado_en"], name="actividad_org_fecha_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.accion} · {self.descripcion[:60]}"
+
+
 class TurnoRecorrido(models.Model):
     hermandad = models.ForeignKey(
         Hermandad,
@@ -481,6 +528,26 @@ class Devoto(models.Model):
     )
     correo = models.EmailField()
     medida_hombro_cm = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True)
+
+    @property
+    def medida_hombro_m(self):
+        """Return the stored shoulder measurement in metres for display."""
+        if self.medida_hombro_cm is None:
+            return None
+        return self.medida_hombro_cm / Decimal("100")
+
+    @property
+    def numero_registro(self):
+        """Return the consecutive number of this devoto within its organization."""
+        registros = type(self).objects.filter(hermandad_id=self.hermandad_id)
+        if not self.pk:
+            return registros.count() + 1
+
+        return registros.filter(
+            models.Q(creado_en__lt=self.creado_en)
+            | models.Q(creado_en=self.creado_en, pk__lte=self.pk)
+        ).count()
+
     comprobante_codigo = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     acepta_privacidad = models.BooleanField(default=False)
     acepta_comunicaciones = models.BooleanField(

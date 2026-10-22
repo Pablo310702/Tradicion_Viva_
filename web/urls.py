@@ -6,9 +6,13 @@ app_name = "web"
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path("organizaciones/", views.organizaciones, name="organizaciones"),
+    path("privacidad/", views.privacidad, name="privacidad"),
+    path("politicas-de-calidad/", views.calidad, name="calidad"),
     path("iniciar-sesion/", views.iniciar_sesion, name="iniciar_sesion"),
     path("iniciar-sesion/devoto/", views.devoto_login, name="devoto_login"),
     path("iniciar-sesion/administrativo/", views.administrativo_login, name="administrativo_login"),
+    path("administrativo/panel/", views.admin_dashboard, name="admin_dashboard"),
     path("api/auth/login/", auth_api.api_login, name="api_auth_login"),
     path("api/auth/refresh/", auth_api.api_refresh, name="api_auth_refresh"),
     path("api/auth/me/", auth_api.api_me, name="api_auth_me"),
