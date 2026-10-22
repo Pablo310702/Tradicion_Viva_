@@ -33,6 +33,7 @@ jobs:
     env:
       DATABASE_URL: postgres://tv_user:tv_password@127.0.0.1:5432/tradicion_viva_test
       REDIS_URL: redis://127.0.0.1:6379/0
+      DATABASE_SSL_REQUIRE: "False"
       SECRET_KEY: ci-only-secret-key-not-used-outside-tests-12345678901234567890
       JWT_SECRET_KEY: ci-only-jwt-secret-not-used-outside-tests-12345678901234567890
       DEBUG: "False"
