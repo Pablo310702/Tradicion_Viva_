@@ -385,10 +385,11 @@ class AdminDashboardTests(TestCase):
 
 
 class PublicViewsTests(BaseProjectTestCase):
-    def test_home_lists_active_organizations(self):
+    def test_home_links_to_participant_directory_without_listing_organizations(self):
         response = self.client.get(reverse("web:home"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.hermandad.nombre)
+        self.assertContains(response, "Hermandades y Cofradías Participantes")
+        self.assertNotContains(response, self.hermandad.nombre)
 
     def test_nombre_corto_is_in_section_context(self):
         response = self.client.get(
@@ -665,6 +666,22 @@ class PublicViewsTests(BaseProjectTestCase):
         self.assertEqual(progreso["turnos_alcanzados_ids"], [turno.pk])
 
     def test_section_menu_keeps_live_tracking_link(self):
+        ahora = timezone.now()
+        self.hermandad.gps_activo = True
+        self.hermandad.gps_publico = True
+        self.hermandad.gps_publicacion_desde = ahora - timedelta(hours=1)
+        self.hermandad.gps_publicacion_hasta = ahora + timedelta(hours=1)
+        self.hermandad.traccar_device_id = "test-device"
+        self.hermandad.save(
+            update_fields=[
+                "gps_activo",
+                "gps_publico",
+                "gps_publicacion_desde",
+                "gps_publicacion_hasta",
+                "traccar_device_id",
+            ]
+        )
+
         response = self.client.get(
             reverse(
                 "web:seccion_generica",
