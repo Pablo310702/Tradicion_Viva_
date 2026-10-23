@@ -105,6 +105,19 @@
     border-color:var(--brand-primary-deep);
   }
 
+  .access-register{
+    margin-top:22px;
+    padding:22px 26px;
+    border:1px solid #ddcfe3;
+    border-radius:14px;
+    background:linear-gradient(135deg,#fff,#f8effa);
+    text-align:center;
+    box-shadow:0 8px 20px rgba(66,25,78,.07);
+  }
+  .access-register h2{margin:0 0 6px;color:var(--brand-primary-deep);font-size:21px;}
+  .access-register p{margin:0 auto 14px;color:#66596a;line-height:1.5;}
+  .access-register a{color:var(--brand-primary);font-weight:800;text-decoration:underline;text-underline-offset:3px;}
+
   .back-home-wrapper{
     text-align:center;
     margin-top:28px;
@@ -219,6 +232,12 @@
 
     </a>
 
+  </div>
+
+  <div class="access-register">
+    <h2>¿Aún no tienes una cuenta?</h2>
+    <p>Elige la hermandad o cofradía donde deseas registrarte y completa el formulario de devoto.</p>
+    <a href="{% url 'web:organizaciones' %}">Crear cuenta de devoto</a>
   </div>
 
 

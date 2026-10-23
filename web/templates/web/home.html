@@ -125,10 +125,17 @@
   .hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px;}
   .hero-button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 18px;border-radius:10px;background:var(--brand-primary);color:#fff;font-weight:800;}
   .hero-button.secondary{background:#fff;color:var(--brand-primary-deep);border:1px solid var(--brand-lilac);}
-  .institutional-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-bottom:30px;}
-  .institutional-card{padding:22px;border:1px solid var(--border);border-radius:16px;background:var(--card);box-shadow:0 8px 20px rgba(66,25,78,.08);}
-  .institutional-card h2{margin:0 0 8px;color:var(--brand-primary-deep);font-size:22px;}
-  .institutional-card p{margin:0;color:var(--muted);}
+  .institutional-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;margin-bottom:30px;}
+  .institutional-card{padding:28px;border:1px solid var(--border);border-radius:18px;background:var(--card);box-shadow:0 10px 24px rgba(66,25,78,.1);}
+  .institutional-grid .institutional-card{position:relative;overflow:hidden;min-height:230px;transition:transform .18s ease,box-shadow .18s ease;}
+  .institutional-grid .institutional-card:hover{transform:translateY(-4px);box-shadow:0 16px 32px rgba(66,25,78,.16);}
+  .institutional-grid .institutional-card::before{content:"";position:absolute;inset:0 0 auto;height:6px;background:linear-gradient(90deg,var(--brand-primary),var(--brand-lilac),var(--brand-cream));}
+  .institutional-grid .vision-card::before{background:linear-gradient(90deg,var(--brand-sand),var(--brand-cream),var(--brand-lilac));}
+  .institutional-card-top{display:flex;align-items:center;gap:10px;margin-bottom:16px;color:var(--brand-primary);}
+  .institutional-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#f2e5f5;color:var(--brand-primary-deep);font-size:20px;font-weight:800;}
+  .institutional-label{font-size:12px;font-weight:800;letter-spacing:1.5px;}
+  .institutional-card h2{margin:0 0 12px;color:var(--brand-primary-deep);font-size:28px;}
+  .institutional-card p{margin:0;color:var(--muted);font-size:17px;line-height:1.7;}
   @media (max-width:650px){.institutional-grid{grid-template-columns:1fr;}.institutional-hero p{font-size:16px;}}
 </style>
 {% endblock %}
@@ -141,28 +148,21 @@
   <p>Plataforma digital para fortalecer la organización de hermandades y cofradías, preservar la tradición y facilitar la participación de sus devotos.</p>
   <div class="hero-actions">
     <a class="hero-button" href="{% url 'web:iniciar_sesion' %}">Ingresar al sistema</a>
-    <a class="hero-button secondary" href="{% url 'web:organizaciones' %}">Ver organizaciones religiosas</a>
+    <a class="hero-button secondary" href="{% url 'web:organizaciones' %}">Hermandades y Cofradías Participantes</a>
   </div>
 </section>
 
 <section class="institutional-grid" aria-label="Información institucional">
-  <article class="institutional-card"><h2>Misión</h2><p>Facilitar la organización de hermandades y cofradías mediante una plataforma confiable, accesible y ordenada que centralice registros, turnos, comunicaciones y actividades procesionales, fortaleciendo la participación de cada devoto.</p></article>
-  <article class="institutional-card"><h2>Visión</h2><p>Ser una plataforma de referencia para la gestión digital del patrimonio y la tradición procesional, conectando a las organizaciones con sus comunidades y promoviendo procesos más transparentes, eficientes y cercanos.</p></article>
-</section>
-
-<section class="institutional-card" aria-labelledby="organizaciones-destacadas-title">
-  <h2 id="organizaciones-destacadas-title">Organizaciones participantes</h2>
-  {% if hermandades %}
-    <div class="hero-actions">
-      {% for hermandad in hermandades %}
-        <a class="hero-button secondary" href="{% url 'web:hermandad_detalle' slug=hermandad.slug %}">
-          {{ hermandad.nombre }}
-        </a>
-      {% endfor %}
-    </div>
-  {% else %}
-    <p>Próximamente se publicarán las organizaciones participantes.</p>
-  {% endif %}
+  <article class="institutional-card mission-card">
+    <div class="institutional-card-top"><span class="institutional-icon" aria-hidden="true">✦</span><span class="institutional-label">NUESTRO PROPÓSITO</span></div>
+    <h2>Misión</h2>
+    <p>Fortalecer la vida de las hermandades y cofradías con una plataforma confiable, humana y ordenada que conecte registros, turnos, comunicaciones y actividades procesionales, haciendo que cada devoto participe con mayor claridad, dignidad y cercanía.</p>
+  </article>
+  <article class="institutional-card vision-card">
+    <div class="institutional-card-top"><span class="institutional-icon" aria-hidden="true">✧</span><span class="institutional-label">HACIA DÓNDE VAMOS</span></div>
+    <h2>Visión</h2>
+    <p>Convertirnos en una plataforma de referencia para preservar y proyectar el patrimonio procesional, uniendo tradición y tecnología para que las organizaciones trabajen con transparencia, eficiencia y una conexión más cercana con sus comunidades.</p>
+  </article>
 </section>
 
 {% endblock %}

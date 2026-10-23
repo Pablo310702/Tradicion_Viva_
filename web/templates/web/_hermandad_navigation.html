@@ -410,22 +410,24 @@
     </div>
 
 
-    <!-- RECORRIDO -->
-    <div class="org-menu-item">
+    {% if h.gps_publicable %}
+        <!-- RECORRIDO: visible únicamente durante el horario público configurado -->
+        <div class="org-menu-item">
 
-        <span class="org-menu-link">
-            Recorrido ▼
-        </span>
+            <span class="org-menu-link">
+                Recorrido ▼
+            </span>
 
-        <div class="org-dropdown">
+            <div class="org-dropdown">
 
-            <a href="{% url 'web:seguimiento' h.slug %}">
-                Seguimiento en vivo
-            </a>
+                <a href="{% url 'web:seguimiento' h.slug %}">
+                    Seguimiento en vivo
+                </a>
+
+            </div>
 
         </div>
-
-    </div>
+    {% endif %}
 
 
     <!-- DEVOTOS -->
@@ -562,21 +564,23 @@
         </details>
 
 
-        <details>
+        {% if h.gps_publicable %}
+            <details>
 
-            <summary>
-                Recorrido
-            </summary>
+                <summary>
+                    Recorrido
+                </summary>
 
-            <div class="org-drawer-submenu">
+                <div class="org-drawer-submenu">
 
-                <a href="{% url 'web:seguimiento' h.slug %}">
-                    Seguimiento en vivo
-                </a>
+                    <a href="{% url 'web:seguimiento' h.slug %}">
+                        Seguimiento en vivo
+                    </a>
 
-            </div>
+                </div>
 
-        </details>
+            </details>
+        {% endif %}
 
 
         <details>

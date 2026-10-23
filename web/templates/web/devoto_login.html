@@ -382,6 +382,18 @@
     border-color:#743a8b;
   }
 
+  .auth-register{
+    margin-top:22px;
+    padding:16px 18px;
+    border:1px solid #decfe3;
+    border-radius:12px;
+    background:#faf5fb;
+    color:#66596a;
+    line-height:1.5;
+    text-align:center;
+  }
+  .auth-register a{color:#743a8b;font-weight:800;text-decoration:underline;text-underline-offset:3px;}
+
 
   @media(max-width:800px){
 
@@ -602,6 +614,12 @@
           </button>
 
         </form>
+
+        <div class="auth-register">
+          ¿Todavía no tienes una cuenta?
+          <a href="{% url 'web:organizaciones' %}">Regístrate como devoto</a>
+          eligiendo primero tu hermandad o cofradía.
+        </div>
 
         <div class="auth-loading" hidden aria-live="polite">
           <div class="auth-loading-card">
