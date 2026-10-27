@@ -1,0 +1,16 @@
+.git
+.gitignore
+.venv
+venv
+__pycache__
+*.py[cod]
+*.sqlite3
+.env
+.env.*
+!.env.production.example
+staticfiles
+backups
+tests_playwright
+render.yaml
+.pytest_cache
+.mypy_cache

@@ -1,0 +1,83 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file: .env.production
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    env_file: .env.production
+    command: ["sh", "-c", "redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build: .
+    env_file: .env.production
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: "no"
+
+  collectstatic:
+    build: .
+    env_file: .env.production
+    command: ["python", "manage.py", "collectstatic", "--noinput"]
+    volumes:
+      - static_data:/app/staticfiles
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env.production
+    command: ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--threads", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-"]
+    volumes:
+      - static_data:/app/staticfiles:ro
+    expose:
+      - "8000"
+    depends_on:
+      collectstatic:
+        condition: service_completed_successfully
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    env_file: .env.production
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - static_data:/srv/static:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  redis_data:
+  static_data:
+  caddy_data:
+  caddy_config:

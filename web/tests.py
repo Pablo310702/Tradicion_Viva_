@@ -34,6 +34,20 @@ class BaseProjectTestCase(TestCase):
         )
 
 
+class HealthEndpointTests(TestCase):
+    def test_health_returns_liveness_payload_without_database_access(self):
+        response = self.client.get(reverse("web:health"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "ok"})
+        self.assertEqual(response["Cache-Control"], "no-store")
+
+    def test_health_rejects_non_get_requests(self):
+        response = self.client.post(reverse("web:health"))
+
+        self.assertEqual(response.status_code, 405)
+
+
 class AuthenticationApiTests(BaseProjectTestCase):
     def setUp(self):
         super().setUp()

@@ -34,7 +34,7 @@ style="background: var(--theme-accent, #d4af37);"
 
 {% block brand %}
 <a
-  href="{% url 'web:home' %}"
+  href="{% url 'web:organizaciones' %}"
   style="display:flex;align-items:center;gap:10px;"
 >
     {% if h.logo %}
@@ -1019,21 +1019,6 @@ style="background: var(--theme-accent, #d4af37);"
   }
 
 
-  .shoulder-guide {
-    position: absolute;
-    z-index: 1;
-    right: 12px;
-    top: 30%;
-    font-size: 11px;
-    letter-spacing: .16em;
-    color: rgba(255,255,255,.65);
-    border-top: 1px dashed rgba(255,255,255,.45);
-    width: 36%;
-    padding-top: 5px;
-    text-align: right;
-  }
-
-
   .measure-result {
     display: flex;
     flex-direction: column;
@@ -1906,7 +1891,7 @@ style="background: var(--theme-accent, #d4af37);"
           {% if h.es_hermandad %}
 
             <p>
-              Completa tus datos y registra la referencia visual hasta el hombro.
+              Completa tus datos y registra la referencia visual usando tres puntos.
             </p>
 
           {% else %}
@@ -2232,13 +2217,13 @@ style="background: var(--theme-accent, #d4af37);"
                   </span>
 
                   <h4>
-                    Altura hasta el hombro
+                    Medición con tres puntos
                   </h4>
 
                   <p>
                     Abre la cámara e indica la altura total de la persona
-                    para calibrar la imagen. Luego marca suelo, cabeza y
-                    hombro. El sistema guardará el resultado en centímetros
+                    para calibrar la imagen. Luego marca los tres puntos de
+                    referencia. El sistema guardará el resultado en centímetros
                     y lo mostrará también en metros, por ejemplo:
                     1.48 m (148.0 cm).
                   </p>
@@ -2399,11 +2384,11 @@ style="background: var(--theme-accent, #d4af37);"
             <div>
 
               <strong>
-                Medir hasta el hombro
+                Medir referencia visual
               </strong>
 
               <small id="measureHelp">
-                Ingresa la altura total de la persona y toca el suelo.
+                Ingresa la altura total y marca los tres puntos de referencia.
               </small>
 
             </div>
@@ -2466,10 +2451,6 @@ style="background: var(--theme-accent, #d4af37);"
             <canvas
               id="measureCanvas"
             ></canvas>
-
-            <div class="shoulder-guide">
-              HOMBRO
-            </div>
 
           </div>
 
@@ -2819,7 +2800,7 @@ style="background: var(--theme-accent, #d4af37);"
     );
 
 
-    const shoulderPx = Math.hypot(
+      const referencePx = Math.hypot(
       points[2].x - points[0].x,
       points[2].y - points[0].y
     );
@@ -2827,7 +2808,7 @@ style="background: var(--theme-accent, #d4af37);"
 
     if (
       fullPx < 20
-      || shoulderPx < 10
+      || referencePx < 10
     ) {
 
       resultLabel.textContent =
@@ -2844,7 +2825,7 @@ style="background: var(--theme-accent, #d4af37);"
       40,
       Math.min(
         220,
-        (shoulderPx / fullPx) * realHeight
+        (referencePx / fullPx) * realHeight
       )
     );
 
@@ -2880,7 +2861,7 @@ style="background: var(--theme-accent, #d4af37);"
       "Calibración pendiente";
 
     help.textContent =
-      "Ingresa la altura total de la persona y toca el suelo.";
+      "Ingresa la altura total y marca los tres puntos de referencia.";
 
     draw();
   }

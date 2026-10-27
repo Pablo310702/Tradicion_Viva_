@@ -27,7 +27,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.text import slugify
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from hermandades.models import (
     AdministradorOrganizacion,
@@ -301,6 +301,14 @@ def _enviar_comprobante_registro(request, devoto):
 def home(request):
     hermandades = Hermandad.objects.filter(activa=True).order_by("nombre")
     return render(request, "web/home.html", {"hermandades": hermandades})
+
+
+@require_GET
+def health(request):
+    """Liveness check for the reverse proxy and container orchestrator."""
+    response = JsonResponse({"status": "ok"})
+    response["Cache-Control"] = "no-store"
+    return response
 
 
 def organizaciones(request):
