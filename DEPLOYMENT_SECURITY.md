@@ -52,5 +52,20 @@ python manage.py migrate
 python manage.py collectstatic --noinput
 ```
 
+## Controles agregados
+
+Los accesos administrativos tienen límites en la aplicación: `/iniciar-sesion/administrativo/`
+y `/admin/login/` aceptan como máximo 10 intentos por IP cada 5 minutos, y los
+fallos repetidos bloquean las credenciales durante 15 minutos. Mantén límites
+equivalentes en el WAF o CDN para detener tráfico antes de Gunicorn.
+
+Restringe `/admin/*` en el WAF a una VPN o a IPs administrativas conocidas. Si
+no existen IPs estables, usa una VPN o bastion y no expongas el origen de la
+aplicación directamente a Internet.
+
+El Caddy incluido agrega CSP, Permissions-Policy, caché de estáticos y elimina
+el encabezado `Server` del proxy. Verifica que el DNS público llegue a Caddy y
+no directamente al puerto de Gunicorn.
+
 Prueba también restauración de backups, recuperación de contraseña, webhooks firmados,
 rotación de secretos y límites de archivos.

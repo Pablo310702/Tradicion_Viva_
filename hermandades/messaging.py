@@ -331,6 +331,7 @@ def send_whatsapp_document_template(
     pdf_bytes: bytes,
     filename: str,
     *,
+    organization_name: str = "",
     session: requests.Session | None = None,
 ) -> ProviderResult:
     """Carga un comprobante privado y lo envía como encabezado de plantilla Utility."""
@@ -368,6 +369,27 @@ def send_whatsapp_document_template(
         if not media_id:
             raise MessagingProviderError("Meta no devolvió el identificador del comprobante cargado.")
 
+        components = [
+            {
+                "type": "header",
+                "parameters": [
+                    {
+                        "type": "document",
+                        "document": {"id": media_id, "filename": filename},
+                    }
+                ],
+            }
+        ]
+        if organization_name.strip():
+            components.append(
+                {
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": organization_name.strip()[:512]},
+                    ],
+                }
+            )
+
         payload = {
             "messaging_product": "whatsapp",
             "recipient_type": "individual",
@@ -376,17 +398,7 @@ def send_whatsapp_document_template(
             "template": {
                 "name": template_name,
                 "language": {"code": template_language},
-                "components": [
-                    {
-                        "type": "header",
-                        "parameters": [
-                            {
-                                "type": "document",
-                                "document": {"id": media_id, "filename": filename},
-                            }
-                        ],
-                    }
-                ],
+                "components": components,
             },
         }
         messages_url = f"https://graph.facebook.com/{version}/{phone_number_id}/messages"

@@ -78,6 +78,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "web.security.SecurityHeadersMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "web.security.AbuseRateLimitMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -310,6 +311,16 @@ LOGGING = {
             "handlers": ["console"],
             "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO"),
             "propagate": False,
-        }
+        },
+        "django.request": {
+            "handlers": ["console"],
+            "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        "django.server": {
+            "handlers": ["console"],
+            "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
     },
 }

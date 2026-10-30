@@ -293,7 +293,12 @@ def _enviar_comprobante_registro(request, devoto):
     if devoto.acepta_whatsapp:
         try:
             telefono = normalizar_telefono_e164(devoto.celular)
-            send_whatsapp_document_template(telefono, pdf_bytes, filename)
+            send_whatsapp_document_template(
+                telefono,
+                pdf_bytes,
+                filename,
+                organization_name=devoto.hermandad.nombre,
+            )
         except Exception:
             logger.exception("No fue posible enviar por WhatsApp el comprobante del devoto %s", devoto.pk)
 
@@ -926,6 +931,15 @@ def seccion_generica(request, slug, seccion):
             if form.is_valid():
                 with transaction.atomic():
                     devoto = form.save()
+                    registrar_actividad(
+                        request,
+                        "registro_devoto_publico",
+                        "Se creó un registro de devoto desde el formulario público.",
+                        tipo=ActividadAdministrativa.ACTIVIDAD,
+                        hermandad=h,
+                        objeto=devoto,
+                        detalles={"origen": "formulario_publico"},
+                    )
                 request.session.cycle_key()
                 request.session["cuenta_devoto_id"] = devoto.cuenta_id
                 request.session["tradicion_viva_last_activity"] = timezone.now().timestamp()

@@ -5,8 +5,33 @@
 {$CADDY_SITES} {
     encode zstd gzip
 
+    # Security headers are emitted at the edge so they also cover Django's
+    # admin, error pages and static responses. Keep the policy compatible
+    # with the public map/media integrations used by the site.
+    header {
+        -Server
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=(self), payment=(), usb=()"
+        Content-Security-Policy "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https:; script-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src 'self' https:; object-src 'none'; upgrade-insecure-requests"
+    }
+
+    @admin path /admin/*
+    header @admin {
+        Cache-Control "no-store"
+        X-Robots-Tag "noindex, nofollow, noarchive"
+    }
+
     handle_path /static/* {
+        header Cache-Control "public, max-age=31536000, immutable"
         root * /srv/static
+        file_server
+    }
+
+    handle_path /media/* {
+        header Cache-Control "public, max-age=86400"
+        root * /srv/media
         file_server
     }
 

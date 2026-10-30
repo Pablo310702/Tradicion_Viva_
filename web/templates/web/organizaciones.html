@@ -36,7 +36,7 @@
         <div class="directory-card-topline" style="background: {{ h.color_acento|default:'#743a8b' }};"></div>
         {% if h.portada %}<div class="directory-cover" style="background-image:url('{{ h.portada.url }}');"></div>{% else %}<div class="directory-cover"></div>{% endif %}
         <div class="directory-content">
-          <div class="directory-logo">{% if h.logo %}<img src="{{ h.logo.url }}" alt="Logo de {{ h.nombre }}">{% else %}<span>Logo</span>{% endif %}</div>
+          <div class="directory-logo">{% if h.logo %}<img src="{{ h.logo.url }}" alt="Logo de {{ h.nombre }}" loading="lazy" decoding="async">{% else %}<span>Logo</span>{% endif %}</div>
           <div class="directory-info">
             <h2>{{ h.nombre }}</h2>
             {% if h.templo %}<p>{{ h.templo }}</p>{% endif %}

@@ -14,6 +14,9 @@ __pycache__/
 .DS_Store
 Thumbs.db
 .env.bak
+.smtp_app_password
+.brevo_smtp_key
+.whatsapp_access_token
 
 *.sqlite3
 respaldo*.json
