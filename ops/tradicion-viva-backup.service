@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup PostgreSQL de Tradición Viva
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=opc
+WorkingDirectory=/home/opc/tradicion-viva
+ExecStart=/bin/bash /home/opc/tradicion-viva/ops/backup_postgres.sh
