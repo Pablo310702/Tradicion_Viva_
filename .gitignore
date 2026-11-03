@@ -31,6 +31,7 @@ media/videos/*_original.mp4
 tradicionviva_recovery_20261030
 tradicionviva_recovery_20261030.pub
 .env.production
+.env.staging
 tradicionviva_console_rsa_20261030
 tradicionviva_console_rsa_20261030.pub
 tools/k6/k6-v2.3.0-windows-amd64/k6.exe
