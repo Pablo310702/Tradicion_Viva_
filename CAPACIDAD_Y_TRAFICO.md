@@ -15,6 +15,19 @@ No se debe convertir toda la página en `Cache Everything`: podría entregar HTM
 5. Aplicar rate limiting únicamente a login, recuperación de contraseña, APIs y altas públicas. No limitar globalmente todas las visitas.
 6. Cuando el origen esté estable, restringir Oracle para aceptar 80/443 solo desde IPs de Cloudflare; conservar SSH restringido a la IP administrativa.
 
+## Staging aislado
+
+El staging usa `docker-compose.production.yml` junto con `docker-compose.loadtest.yml` y un archivo `.env.staging` independiente. El overlay publica la aplicación en el puerto 9000, desactiva Caddy por defecto y usa volúmenes con nombres `tradicion_viva_staging_*`; así no comparte base de datos, Redis, media ni estáticos con producción.
+
+```powershell
+Copy-Item .env.staging.example .env.staging
+# Edita .env.staging y reemplaza todos los valores CHANGE_ME.
+docker compose --env-file .env.staging -f docker-compose.production.yml -f docker-compose.loadtest.yml config --quiet
+docker compose --env-file .env.staging -f docker-compose.production.yml -f docker-compose.loadtest.yml up -d --build
+```
+
+El staging debe vivir en otra instancia Oracle antes de ejecutar los perfiles de 10,000 y 30,000. No debe levantarse en la misma VM productiva de 1 vCPU.
+
 ## Pruebas
 
 La prueba de carga de `tests/load/tradicion_viva.k6.js` se ejecuta contra un staging equivalente. La secuencia recomendada es `step2`, `staged` y después `stress`, observando CPU, memoria, swap, workers, PostgreSQL, Redis, 5xx y latencias p95/p99.

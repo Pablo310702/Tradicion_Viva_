@@ -6,3 +6,17 @@ services:
 
   caddy:
     profiles: ["https"]
+
+volumes:
+  postgres_data:
+    name: tradicion_viva_staging_postgres_data
+  redis_data:
+    name: tradicion_viva_staging_redis_data
+  static_data:
+    name: tradicion_viva_staging_static_data
+  media_data:
+    name: tradicion_viva_staging_media_data
+  caddy_data:
+    name: tradicion_viva_staging_caddy_data
+  caddy_config:
+    name: tradicion_viva_staging_caddy_config
