@@ -23,4 +23,17 @@ La prueba de carga de `tests/load/tradicion_viva.k6.js` se ejecuta contra un sta
 
 ## Escalado
 
+### MediciÃ³n y ruta progresiva
+
+La mediciÃ³n del 3 de noviembre de 2026 encontrÃ³ que el origen de Oracle tiene 1 vCPU, aproximadamente 5.6 GB de RAM, 4 GB de swap y 30 GB de disco (16 GB libres). La pÃ¡gina estÃ¡ sana con esa capacidad, pero ese tamaÃ±o no permite certificar 10,000 ni 30,000 usuarios simultÃ¡neos. El objetivo de 30,000 es una meta de arquitectura y pruebas, no una garantÃ­a automÃ¡tica.
+
+Usa `tests/load/run_progressive_load.ps1` para ejecutar las pruebas Ãºnicamente contra un staging. El lanzador rechaza el dominio de producciÃ³n y detiene la progresiÃ³n cuando falla un perfil:
+
+```powershell
+.\tests\load\run_progressive_load.ps1 -BaseUrl https://staging.example.com -Profile step2
+.\tests\load\run_progressive_load.ps1 -BaseUrl https://staging.example.com -RunAll
+```
+
+La ruta recomendada es: `step2` hasta 200 usuarios, `staged` hasta 10,000 y `stress` hasta 30,000. Antes de pasar de 200, hay que crear un staging aislado; antes de llegar a 10,000, escalarlo inicialmente a 4 vCPU y 16 GB de RAM, separar PostgreSQL y Redis, y poner al menos dos rÃ©plicas web detrÃ¡s de un balanceador. Cada escalÃ³n debe mantener p95 menor de 1.5 s, p99 menor de 3 s, menos de 1% de errores y sin saturaciÃ³n de CPU, memoria, PostgreSQL o Redis.
+
 Los workers Gunicorn se pueden ajustar mediante `GUNICORN_WORKERS` y `GUNICORN_THREADS`, pero solo después de medir. Para superar de forma sostenida una carga alta, la siguiente evolución es separar PostgreSQL y Redis, usar almacenamiento de objetos para media/PDF y añadir una segunda instancia detrás de un balanceador.
