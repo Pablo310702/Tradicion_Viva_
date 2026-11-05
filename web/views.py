@@ -297,6 +297,7 @@ def _enviar_comprobante_registro(request, devoto):
                 telefono,
                 pdf_bytes,
                 filename,
+                first_name=devoto.primer_nombre,
                 organization_name=devoto.hermandad.nombre,
             )
         except Exception:

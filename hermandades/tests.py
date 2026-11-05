@@ -159,6 +159,8 @@ class MessagingServiceTests(TestCase):
             "+50255555555",
             b"%PDF contenido",
             "comprobante.pdf",
+            first_name="Ana",
+            organization_name="Hermandad de prueba",
             session=session,
         )
 
@@ -174,3 +176,6 @@ class MessagingServiceTests(TestCase):
         self.assertEqual(payload["template"]["name"], "comprobante_registro")
         document = payload["template"]["components"][0]["parameters"][0]["document"]
         self.assertEqual(document, {"id": "media-123", "filename": "comprobante.pdf"})
+        body_parameters = payload["template"]["components"][1]["parameters"]
+        self.assertEqual(body_parameters[0]["text"], "Ana")
+        self.assertEqual(body_parameters[1]["text"], "Hermandad de prueba")

@@ -1,6 +1,14 @@
+param(
+    [string]$SshKey = $env:TRADICION_VIVA_SSH_KEY
+)
+
 $ErrorActionPreference = 'Stop'
 
-$sshKey = 'C:\Users\Pablo Alvarez\Desktop\PG I Y II\ssh-key-2026-10-27.key'
+if ([string]::IsNullOrWhiteSpace($SshKey)) {
+    throw 'Define TRADICION_VIVA_SSH_KEY o ejecuta el script con -SshKey apuntando a la llave SSH.'
+}
+
+$sshKey = $SshKey
 $tokenFile = Join-Path $PSScriptRoot '.whatsapp_access_token'
 if (!(Test-Path $sshKey)) { throw "No existe la llave SSH: $sshKey" }
 if (!(Test-Path $tokenFile)) { throw 'Crea .whatsapp_access_token en el proyecto y pega allí el token de Meta. No lo pegues en el chat.' }
@@ -27,7 +35,7 @@ text = '\n'.join(lines)
 values = {
     'WHATSAPP_GRAPH_API_VERSION': 'v25.0',
     'WHATSAPP_ACCESS_TOKEN': token,
-    'WHATSAPP_PHONE_NUMBER_ID': '1457084377477074',
+    'WHATSAPP_PHONE_NUMBER_ID': '1379367871930009',
     'WHATSAPP_DEFAULT_TEMPLATE_NAME': 'tradicion_viva_comunicado',
     'WHATSAPP_DEFAULT_TEMPLATE_LANGUAGE': 'es_MX',
     'WHATSAPP_RECEIPT_TEMPLATE_NAME': 'comprobante_registro',

@@ -331,6 +331,7 @@ def send_whatsapp_document_template(
     pdf_bytes: bytes,
     filename: str,
     *,
+    first_name: str = "",
     organization_name: str = "",
     session: requests.Session | None = None,
 ) -> ProviderResult:
@@ -380,13 +381,20 @@ def send_whatsapp_document_template(
                 ],
             }
         ]
+        body_parameters = []
+        if first_name.strip():
+            body_parameters.append(
+                {"type": "text", "text": first_name.strip()[:512]}
+            )
         if organization_name.strip():
+            body_parameters.append(
+                {"type": "text", "text": organization_name.strip()[:512]}
+            )
+        if body_parameters:
             components.append(
                 {
                     "type": "body",
-                    "parameters": [
-                        {"type": "text", "text": organization_name.strip()[:512]},
-                    ],
+                    "parameters": body_parameters,
                 }
             )
 
