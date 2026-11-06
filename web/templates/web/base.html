@@ -112,6 +112,19 @@
   transition:.18s ease;
 }
 
+.session-form{
+  position:absolute;
+  right:16px;
+  top:50%;
+  transform:translateY(-50%);
+  margin:0;
+}
+
+.session-button{
+  cursor:pointer;
+  font-family:inherit;
+}
+
 .session-link:hover{
   border-color:var(--brand-primary);
   background:#f3eaf6;
@@ -437,7 +450,14 @@
         {% endblock %}
       </div>
       {% block header_actions %}
-        <a class="session-link" href="{% url 'web:iniciar_sesion' %}">🔒 Iniciar sesión</a>
+        {% if nombre_sesion %}
+          <form class="session-form" method="post" action="{% if tipo_sesion == 'administrativo' %}{% url 'web:administrativo_logout' %}{% else %}{% url 'web:devoto_logout' %}{% endif %}">
+            {% csrf_token %}
+            <button class="session-link session-button" type="submit" title="Cerrar sesión">{{ nombre_sesion }}</button>
+          </form>
+        {% else %}
+          <a class="session-link" href="{% url 'web:iniciar_sesion' %}">🔒 Iniciar sesión</a>
+        {% endif %}
       {% endblock %}
     </div>
   </header>

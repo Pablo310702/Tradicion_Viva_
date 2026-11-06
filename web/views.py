@@ -14,7 +14,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.contrib.auth import authenticate, get_user_model, login
+from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.core import signing
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.mail import EmailMultiAlternatives, send_mail
@@ -538,6 +538,13 @@ def devoto_logout(request):
     request.session.pop("cuenta_devoto_id", None)
     request.session.cycle_key()
     messages.success(request, "Sesión de devoto cerrada correctamente.")
+    return redirect("web:home")
+
+
+@require_POST
+def administrativo_logout(request):
+    logout(request)
+    messages.success(request, "Sesión administrativa cerrada correctamente.")
     return redirect("web:home")
 
 
