@@ -251,6 +251,28 @@ header .brand,
   white-space:nowrap;
 }
 
+/* Identidad consistente del acceso de sesión en todas las pantallas de la
+   organización: fondo blanco, nombre legible y borde institucional. */
+.header-inner .session-link{
+  max-width:min(260px, calc(100vw - 220px));
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  background:#ffffff!important;
+  background-color:#ffffff!important;
+  color:var(--theme-accent-strong, var(--theme-text))!important;
+  border:2px solid var(--theme-accent, var(--theme-border))!important;
+  box-shadow:0 2px 8px rgba(0,0,0,.12)!important;
+}
+
+.header-inner .session-link:hover,
+.header-inner .session-link:focus-visible{
+  background:#ffffff!important;
+  background-color:#ffffff!important;
+  color:var(--theme-accent-strong, var(--theme-text))!important;
+  border-color:var(--theme-accent-strong, var(--theme-border))!important;
+}
+
 /* Encabezado y pie negros; el texto siempre conserva contraste. */
 footer,
 .site-footer,
