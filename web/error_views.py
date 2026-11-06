@@ -11,3 +11,13 @@ def error_403(request, exception):
 
 def error_500(request):
     return render(request, "web/errors/500.html", status=500)
+
+
+def preview_error_403(request):
+    """Vista pública para revisar visualmente la pantalla 403."""
+    return error_403(request, None)
+
+
+def preview_error_500(request):
+    """Vista pública para revisar visualmente la pantalla 500 sin provocar una excepción."""
+    return error_500(request)

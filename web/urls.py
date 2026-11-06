@@ -1,12 +1,14 @@
 from django.urls import path
 
-from . import auth_api, views, webhooks
+from . import auth_api, error_views, views, webhooks
 
 app_name = "web"
 
 urlpatterns = [
     path("", views.home, name="home"),
     path("health/", views.health, name="health"),
+    path("vista-error/403/", error_views.preview_error_403, name="preview_error_403"),
+    path("vista-error/500/", error_views.preview_error_500, name="preview_error_500"),
     path("organizaciones/", views.organizaciones, name="organizaciones"),
     path("api/presencia/", views.presencia, name="presencia"),
     path("privacidad/", views.privacidad, name="privacidad"),
