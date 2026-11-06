@@ -65,6 +65,35 @@
   .pie-legend li{display:grid;grid-template-columns:14px minmax(0,1fr) auto;align-items:center;gap:8px;color:var(--dashboard-text);font-size:13px;}
   .pie-swatch{width:12px;height:12px;border-radius:50%;background:var(--swatch);border:1px solid rgba(0,0,0,.12);}
   @media (max-width:900px){.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.dashboard-grid{grid-template-columns:1fr;}}
+  @media (max-width:700px){
+    .header-inner:has(.admin-header-actions){
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+      gap:12px;
+      padding:16px;
+      min-height:0;
+    }
+    .header-inner:has(.admin-header-actions) .brand{
+      order:1;
+      width:100%;
+      max-width:100%;
+      justify-content:center;
+      padding:0;
+    }
+    .admin-header-actions{
+      position:static;
+      order:2;
+      width:100%;
+      justify-content:center;
+      flex-wrap:wrap;
+      transform:none;
+    }
+    .admin-header-actions .session-link{
+      max-width:100%;
+      text-align:center;
+    }
+  }
   @media (max-width:560px){.metric-grid{grid-template-columns:1fr 1fr;}.bar-row{grid-template-columns:1fr 1fr 32px;}.bar-track{grid-column:1 / -1;grid-row:2;}.bar-row strong{grid-column:2;grid-row:1;text-align:right;}}
 </style>
 {% endblock %}
