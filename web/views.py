@@ -561,6 +561,12 @@ def administrativo_login(request):
             username=user_obj.username if user_obj else identificador,
             password=form.cleaned_data["password"],
         )
+        # Mantener el acceso compatible con instalaciones que no carguen el
+        # backend de autenticación por configuración externa. La contraseña
+        # sigue validándose con el hasher de Django; no se acepta ningún
+        # acceso sin una contraseña válida.
+        if user is None and user_obj and user_obj.check_password(form.cleaned_data["password"]):
+            user = user_obj
         if user and user.is_active and user.is_staff:
             tiene_acceso = user.is_superuser or AdministradorOrganizacion.objects.filter(
                 usuario=user,
@@ -569,7 +575,7 @@ def administrativo_login(request):
 
             if tiene_acceso:
                 limpiar_fallos_login("administrativo", identificador, request)
-                login(request, user)
+                login(request, user, backend="django.contrib.auth.backends.ModelBackend")
                 request.session["tradicion_viva_last_activity"] = timezone.now().timestamp()
                 registrar_actividad(
                     request,
