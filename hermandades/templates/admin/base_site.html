@@ -10,14 +10,14 @@
       --tv-purple:#552583;
       --tv-purple-deep:#42194e;
       --tv-lilac:#b88ac5;
-      --tv-gold:#ecd5ae;
-      --tv-cream:#faf7fb;
-      --tv-border:#ddcfe3;
-      --tv-text:#302535;
+      --tv-black:#080808;
+      --tv-panel:#171717;
+      --tv-border:#4b4b4b;
+      --tv-text:#fff;
     }
 
     body{
-      background:var(--tv-cream);
+      background:var(--tv-black);
       color:var(--tv-text);
       font-family:"Times New Roman", Times, serif;
     }
@@ -25,26 +25,26 @@
     #header{
       background:var(--tv-purple);
       color:#fff;
-      border-bottom:4px solid var(--tv-gold);
+      border-bottom:4px solid var(--tv-purple-deep);
       padding:12px 24px;
     }
 
     #branding{display:flex;align-items:center;gap:12px;}
-    #branding h1{margin:0;color:#fff;font-size:25px;letter-spacing:.04em;font-weight:800;}
+    #branding h1{margin:0;color:#fff !important;font-size:25px;letter-spacing:.04em;font-weight:800;}
     #branding h1::before{content:"";display:inline-block;width:42px;height:42px;margin-right:12px;vertical-align:middle;background:url("{% static 'web/img/tradicion_viva_logo.png' %}") center/contain no-repeat;}
-    #branding h1 a{color:#fff;}
-    #user-tools{color:#f8eacb;font-size:13px;letter-spacing:.03em;}
+    #branding h1 a{color:#fff !important;}
+    #user-tools{color:#fff;font-size:13px;letter-spacing:.03em;}
     #user-tools a{color:#fff;border-bottom:1px solid rgba(255,255,255,.35);}
 
     #content{max-width:1380px;margin:0 auto;padding:30px 28px 55px;}
-    #content h1{color:var(--tv-purple-deep);font-size:30px;font-weight:800;}
-    .module, .dashboard .module{border:1px solid var(--tv-border);border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 10px 24px rgba(66,25,78,.08);}
+    #content h1{color:#fff;font-size:30px;font-weight:800;}
+    .module, .dashboard .module{border:1px solid var(--tv-border);border-radius:14px;overflow:hidden;background:var(--tv-panel);color:#fff;box-shadow:0 10px 24px rgba(0,0,0,.35);}
     .module caption, .module h2{background:var(--tv-purple);color:#fff;font-size:15px;letter-spacing:.04em;text-transform:uppercase;padding:12px 15px;}
     .module caption a, .module h2 a{color:#fff;}
-    .module th, .module td{border-bottom:1px solid #eee6f1;}
+    .module th, .module td{border-bottom:1px solid #454545;color:#fff;}
     .module tr:last-child th, .module tr:last-child td{border-bottom:0;}
-    a:link, a:visited{color:var(--tv-purple);}
-    a:hover{color:var(--tv-purple-deep);}
+    a:link, a:visited{color:#fff;}
+    a:hover{color:#fff;text-decoration:underline;}
     .button, input[type=submit], input[type=button], .submit-row input, button{
       background:var(--tv-purple);
       border:0;
@@ -55,11 +55,15 @@
     .button:hover, input[type=submit]:hover, input[type=button]:hover, .submit-row input:hover, button:hover{background:var(--tv-purple-deep);}
     .object-tools a{background:var(--tv-purple);border-radius:8px;}
     .object-tools a:hover{background:var(--tv-purple-deep);}
-    .submit-row{border:1px solid var(--tv-border);border-radius:12px;background:#f8f1fa;}
-    .breadcrumbs{background:#f1e7f4;color:var(--tv-purple-deep);padding:12px 28px;border-bottom:1px solid var(--tv-border);}
-    #nav-sidebar{background:#fff;border-right:1px solid var(--tv-border);}
-    #nav-sidebar .current-app .section:link, #nav-sidebar .current-model{background:#f1e7f4;color:var(--tv-purple-deep);}
-    .messagelist li{border-radius:10px;box-shadow:0 4px 12px rgba(66,25,78,.08);}
+    .submit-row{border:1px solid var(--tv-border);border-radius:12px;background:var(--tv-panel);}
+    .breadcrumbs{background:#111;color:#fff;padding:12px 28px;border-bottom:1px solid var(--tv-border);}
+    .breadcrumbs a{color:#fff;}
+    #nav-sidebar{background:var(--tv-panel);border-right:1px solid var(--tv-border);}
+    #nav-sidebar .current-app .section:link, #nav-sidebar .current-model{background:var(--tv-purple);color:#fff;}
+    #nav-sidebar a, #recent-actions-module a, #content-main a{color:#fff;}
+    #nav-sidebar a:hover, #recent-actions-module a:hover, #content-main a:hover{color:#fff;}
+    input, select, textarea{background:#101010;color:#fff;border:1px solid #666;}
+    .messagelist li{border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.35);}
     @media(max-width:800px){#header{padding:12px 15px;}#content{padding:22px 14px 40px;}#branding h1{font-size:19px;}#user-tools{font-size:11px;}}
   </style>
 {% endblock %}
