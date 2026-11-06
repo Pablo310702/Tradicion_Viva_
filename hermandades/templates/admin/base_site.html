@@ -64,6 +64,34 @@
     #nav-sidebar a:hover, #recent-actions-module a:hover, #content-main a:hover{color:#fff;}
     input, select, textarea{background:#101010;color:#fff;border:1px solid #666;}
     .messagelist li{border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.35);}
+
+    /* Tema claro de Django: conserva la identidad morada, pero cambia toda
+       la superficie a claro y garantiza texto negro legible. */
+    html[data-theme="light"] body,
+    html[data-theme="light"] #container{background:#faf7fb;color:#302535;}
+    html[data-theme="light"] #content h1{color:var(--tv-purple-deep);}
+    html[data-theme="light"] .module,
+    html[data-theme="light"] .dashboard .module{background:#fff;color:#302535;border-color:#ddcfe3;box-shadow:0 10px 24px rgba(66,25,78,.08);}
+    html[data-theme="light"] .module tr,
+    html[data-theme="light"] .module tr:nth-child(2n){background:#fff;}
+    html[data-theme="light"] .module th,
+    html[data-theme="light"] .module td{color:#302535;border-bottom-color:#eee6f1;}
+    html[data-theme="light"] a:link,
+    html[data-theme="light"] a:visited{color:var(--tv-purple);}
+    html[data-theme="light"] a:hover{color:var(--tv-purple-deep);}
+    html[data-theme="light"] .breadcrumbs{background:#f1e7f4;color:var(--tv-purple-deep);border-bottom-color:#ddcfe3;}
+    html[data-theme="light"] .breadcrumbs a,
+    html[data-theme="light"] #nav-sidebar a,
+    html[data-theme="light"] #recent-actions-module a,
+    html[data-theme="light"] #content-main a{color:var(--tv-purple);}
+    html[data-theme="light"] #nav-sidebar{background:#fff;border-right-color:#ddcfe3;}
+    html[data-theme="light"] #nav-sidebar .current-app .section:link,
+    html[data-theme="light"] #nav-sidebar .current-model{background:#f1e7f4;color:var(--tv-purple-deep);}
+    html[data-theme="light"] input,
+    html[data-theme="light"] select,
+    html[data-theme="light"] textarea{background:#fff;color:#302535;border-color:#cbbbd2;}
+    html[data-theme="light"] .submit-row{background:#f8f1fa;border-color:#ddcfe3;}
+    html[data-theme="light"] .messagelist li{box-shadow:0 4px 12px rgba(66,25,78,.08);}
     @media(max-width:800px){#header{padding:12px 15px;}#content{padding:22px 14px 40px;}#branding h1{font-size:19px;}#user-tools{font-size:11px;}}
   </style>
 {% endblock %}
