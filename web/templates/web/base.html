@@ -444,7 +444,7 @@
     <div class="header-inner">
       <div class="brand">
         {% block brand %}
-          <a class="brand-home" href="{% url 'web:organizaciones' %}" aria-label="Ver todas las cofradías y hermandades">
+          <a class="brand-home" href="{% if request.resolver_match.url_name == 'organizaciones' %}{% url 'web:home' %}{% else %}{% url 'web:organizaciones' %}{% endif %}" aria-label="{% if request.resolver_match.url_name == 'organizaciones' %}Ir al inicio de TRADICIÓN VIVA{% else %}Ver todas las cofradías y hermandades{% endif %}">
             <img class="brand-logo" src="{% static 'web/img/tradicion_viva_logo.png' %}" alt="Logo de TRADICIÓN VIVA" width="40" height="40" decoding="async">
             <span>TRADICIÓN VIVA</span>
           </a>
