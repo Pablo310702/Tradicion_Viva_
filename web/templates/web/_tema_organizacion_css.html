@@ -250,13 +250,17 @@ header .brand,
 
 .header-inner .brand a{
   display:flex;
-  flex-wrap:wrap;
+  flex-wrap:nowrap;
   min-width:0;
   max-width:100%;
   overflow:hidden;
   white-space:normal;
   line-height:1.15;
   font-size:clamp(14px, 1.5vw, 20px);
+}
+
+.header-inner .brand a img{
+  flex:0 0 auto;
 }
 
 .header-inner .brand a span{
