@@ -208,6 +208,7 @@ class ActividadAdministrativaAdmin(admin.ModelAdmin):
 @admin.register(Hermandad)
 class HermandadAdmin(admin.ModelAdmin):
     list_display = (
+        "orden_directorio",
         "nombre",
         "tipo_organizacion",
         "templo",
@@ -218,6 +219,9 @@ class HermandadAdmin(admin.ModelAdmin):
         "editor_turnos_link",
         "inscripciones_turnos_link",
     )
+
+    list_editable = ("orden_directorio",)
+    ordering = ("orden_directorio", "nombre")
 
     list_filter = (
         "tipo_organizacion",
@@ -252,6 +256,7 @@ class HermandadAdmin(admin.ModelAdmin):
                     "templo",
                     "ciudad",
                     "descripcion_corta",
+                    "orden_directorio",
                     "almacenamiento_cuota_mb",
                     "activa",
                 )

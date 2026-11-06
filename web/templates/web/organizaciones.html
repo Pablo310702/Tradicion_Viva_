@@ -18,6 +18,11 @@
   .directory-logo img{width:100%;height:100%;object-fit:cover;}
   .directory-info h2{margin:0 0 7px;color:#000;font-size:18px;}
   .directory-info p{margin:0 0 5px;color:#000;}
+  .directory-presence{display:flex;flex-wrap:wrap;gap:7px;padding:0 16px 16px;}
+  .presence-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:#f4edf6;color:#5b3567;font-size:13px;font-weight:700;}
+  .presence-pill::before{content:"";width:8px;height:8px;border-radius:50%;background:#c8bbc9;}
+  .presence-pill.online::before{background:#26a269;box-shadow:0 0 0 3px rgba(38,162,105,.14);}
+  .presence-names{width:100%;color:#5d5360;font-size:12px;}
   .directory-empty{padding:24px;border:1px dashed var(--border);border-radius:14px;color:var(--muted);}
 </style>
 {% endblock %}
@@ -43,10 +48,25 @@
             <p>{{ h.ciudad }}</p>
           </div>
         </div>
+        {% with estado=h.presencia_actual %}
+          {% if estado %}
+            <div class="directory-presence" aria-label="Personas conectadas">
+              <span class="presence-pill{% if estado.admin %} online{% endif %}">{% if estado.admin %}Admin conectado{% else %}Admin desconectado{% endif %}</span>
+              {% if estado.devotos %}<span class="presence-pill online">{{ estado.devotos|length }} devoto{{ estado.devotos|length|pluralize }} conectado{{ estado.devotos|length|pluralize }}</span><span class="presence-names">{{ estado.devotos|join:", " }}</span>{% else %}<span class="presence-pill">Ningún devoto conectado</span>{% endif %}
+            </div>
+          {% endif %}
+        {% endwith %}
       </a>
     {% endfor %}
   </div>
 {% else %}
   <p class="directory-empty">Actualmente no hay hermandades publicadas.</p>
 {% endif %}
+<script>
+(() => {
+  const endpoint = "{% url 'web:presencia' %}";
+  const heartbeat = () => fetch(endpoint, {credentials: "same-origin", cache: "no-store"}).catch(() => {});
+  window.setInterval(heartbeat, 30000);
+})();
+</script>
 {% endblock %}

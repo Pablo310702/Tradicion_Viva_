@@ -305,7 +305,7 @@ def _enviar_comprobante_registro(request, devoto):
 
 
 def home(request):
-    hermandades = Hermandad.objects.filter(activa=True).order_by("nombre")
+    hermandades = Hermandad.objects.filter(activa=True).order_by("orden_directorio", "nombre")
     return render(request, "web/home.html", {"hermandades": hermandades})
 
 
@@ -317,9 +317,102 @@ def health(request):
     return response
 
 
+PRESENCIA_TTL_SECONDS = 90
+PRESENCIA_CACHE_PREFIX = "tradicion_viva:presencia:"
+
+
+def _cuenta_devoto_actual(request):
+    cuenta_id = request.session.get("cuenta_devoto_id")
+    if not cuenta_id:
+        return None
+    return CuentaDevoto.objects.filter(pk=cuenta_id, activa=True).first()
+
+
+def _registrar_presencia(request):
+    """Registra una señal breve de actividad para mostrar usuarios conectados."""
+    ahora = timezone.now().timestamp()
+    organizaciones = {}
+
+    if request.user.is_authenticated and request.user.is_staff:
+        if request.user.is_superuser:
+            asignaciones = Hermandad.objects.filter(activa=True).values_list("pk", flat=True)
+        else:
+            asignaciones = AdministradorOrganizacion.objects.filter(
+                usuario=request.user,
+                activo=True,
+            ).values_list("hermandad_id", flat=True)
+        for organizacion_id in asignaciones:
+            organizaciones.setdefault(str(organizacion_id), {})["admin"] = {
+                "nombre": request.user.get_username(),
+                "timestamp": ahora,
+            }
+
+    cuenta = _cuenta_devoto_actual(request)
+    if cuenta:
+        for devoto in Devoto.objects.filter(cuenta=cuenta).only(
+            "hermandad_id", "primer_nombre", "otros_nombres", "primer_apellido", "otros_apellidos"
+        ):
+            organizaciones.setdefault(str(devoto.hermandad_id), {}).setdefault("devotos", {})[
+                str(cuenta.pk)
+            ] = {
+                "nombre": devoto.nombre_completo,
+                "timestamp": ahora,
+            }
+
+    for organizacion_id, cambios in organizaciones.items():
+        key = f"{PRESENCIA_CACHE_PREFIX}{organizacion_id}"
+        estado = cache.get(key, {"admin": None, "devotos": {}})
+        if "admin" in cambios:
+            estado["admin"] = cambios["admin"]
+        if "devotos" in cambios:
+            estado.setdefault("devotos", {}).update(cambios["devotos"])
+        estado["devotos"] = {
+            cuenta_id: persona
+            for cuenta_id, persona in estado.get("devotos", {}).items()
+            if ahora - persona.get("timestamp", 0) < PRESENCIA_TTL_SECONDS
+        }
+        if estado.get("admin") and ahora - estado["admin"].get("timestamp", 0) >= PRESENCIA_TTL_SECONDS:
+            estado["admin"] = None
+        cache.set(key, estado, PRESENCIA_TTL_SECONDS)
+
+
+def _presencia_organizaciones(hermandades):
+    ahora = timezone.now().timestamp()
+    presencia = {}
+    for hermandad in hermandades:
+        estado = cache.get(f"{PRESENCIA_CACHE_PREFIX}{hermandad.pk}", {})
+        admin = estado.get("admin")
+        devotos = estado.get("devotos", {})
+        presencia[hermandad.pk] = {
+            "admin": admin if admin and ahora - admin.get("timestamp", 0) < PRESENCIA_TTL_SECONDS else None,
+            "devotos": [
+                persona["nombre"]
+                for persona in devotos.values()
+                if ahora - persona.get("timestamp", 0) < PRESENCIA_TTL_SECONDS
+            ],
+        }
+    return presencia
+
+
+@require_GET
+def presencia(request):
+    _registrar_presencia(request)
+    return JsonResponse({"ok": True})
+
+
 def organizaciones(request):
-    hermandades = Hermandad.objects.filter(activa=True).order_by("nombre")
-    return render(request, "web/organizaciones.html", {"hermandades": hermandades})
+    _registrar_presencia(request)
+    hermandades = list(
+        Hermandad.objects.filter(activa=True).order_by("orden_directorio", "nombre")
+    )
+    estados_presencia = _presencia_organizaciones(hermandades)
+    for hermandad in hermandades:
+        hermandad.presencia_actual = estados_presencia.get(hermandad.pk, {})
+    return render(
+        request,
+        "web/organizaciones.html",
+        {"hermandades": hermandades},
+    )
 
 
 def privacidad(request):

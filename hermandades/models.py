@@ -146,6 +146,11 @@ class Hermandad(OrganizationMediaQuotaMixin, models.Model):
     instagram = models.URLField(blank=True)
 
     activa = models.BooleanField(default=True)
+    orden_directorio = models.PositiveIntegerField(
+        default=1000,
+        verbose_name="orden en el directorio",
+        help_text="Los números menores aparecen primero. Usa 0 para fijar una organización al inicio.",
+    )
 
     # Seguimiento GPS dinámico. El servidor y las credenciales de Traccar son
     # globales; cada hermandad únicamente guarda el dispositivo que le
@@ -242,7 +247,7 @@ class Hermandad(OrganizationMediaQuotaMixin, models.Model):
         return "Marchas" if self.es_hermandad else "Repertorio de música festiva"
 
     class Meta:
-        ordering = ["nombre"]
+        ordering = ["orden_directorio", "nombre"]
         verbose_name = "hermandad o cofradía"
         verbose_name_plural = "hermandades y cofradías"
 
