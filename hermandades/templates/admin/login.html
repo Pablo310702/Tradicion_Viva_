@@ -20,6 +20,12 @@
     background: #417690;
     color: #fff;
   }
+
+  .admin-password-wrap{position:relative;display:block;}
+  .admin-password-wrap input{box-sizing:border-box;width:100%;padding-right:48px;}
+  .admin-password-toggle{position:absolute;top:50%;right:8px;width:34px;height:34px;transform:translateY(-50%);border:0;border-radius:7px;background:transparent;color:#b88ac5;cursor:pointer;}
+  .admin-password-toggle:hover,.admin-password-toggle:focus-visible{background:#552583;color:#fff;outline:2px solid #b88ac5;outline-offset:2px;}
+  .admin-password-toggle svg{width:20px;height:20px;pointer-events:none;}
 </style>
 {% endblock %}
 
@@ -60,7 +66,13 @@
   </div>
   <div class="form-row">
     {{ form.password.errors }}
-    {{ form.password.label_tag }} {{ form.password }}
+    {{ form.password.label_tag }}
+    <span class="admin-password-wrap">
+      {{ form.password }}
+      <button class="admin-password-toggle" type="button" aria-label="Mantener presionado para ver la contraseña" title="Mantener presionado para ver la contraseña">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2.2 12s3.4-5 9.8-5 9.8 5 9.8 5-3.4 5-9.8 5-9.8-5-9.8-5Z"/><circle cx="12" cy="12" r="2.4"/></svg>
+      </button>
+    </span>
     <input type="hidden" name="next" value="{{ next }}">
   </div>
   {% url 'admin_password_reset' as password_reset_url %}
@@ -76,4 +88,20 @@
 
 <a class="site-return-link" href="{% url 'web:home' %}">← Regresar al sitio</a>
 </div>
+
+<script>
+(() => {
+  const password = document.querySelector('.admin-password-wrap input');
+  const toggle = document.querySelector('.admin-password-toggle');
+  if (!password || !toggle) return;
+  const show = () => { password.type = 'text'; };
+  const hide = () => { password.type = 'password'; };
+  toggle.addEventListener('pointerenter', show);
+  toggle.addEventListener('pointerdown', show);
+  toggle.addEventListener('pointerup', hide);
+  toggle.addEventListener('pointerleave', hide);
+  toggle.addEventListener('pointercancel', hide);
+  toggle.addEventListener('blur', hide);
+})();
+</script>
 {% endblock %}
