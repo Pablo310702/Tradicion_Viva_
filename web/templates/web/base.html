@@ -108,6 +108,7 @@
 
   font-size:14px;
   font-weight:800;
+  white-space:nowrap;
   text-decoration:none;
   transition:.18s ease;
 }
@@ -443,7 +444,7 @@
     <div class="header-inner">
       <div class="brand">
         {% block brand %}
-          <a class="brand-home" href="{% url 'web:home' %}" aria-label="Ir al inicio de TRADICIÓN VIVA">
+          <a class="brand-home" href="{% url 'web:organizaciones' %}" aria-label="Ver todas las cofradías y hermandades">
             <img class="brand-logo" src="{% static 'web/img/tradicion_viva_logo.png' %}" alt="Logo de TRADICIÓN VIVA" width="40" height="40" decoding="async">
             <span>TRADICIÓN VIVA</span>
           </a>
@@ -451,10 +452,7 @@
       </div>
       {% block header_actions %}
         {% if nombre_sesion %}
-          <form class="session-form" method="post" action="{% if tipo_sesion == 'administrativo' %}{% url 'web:administrativo_logout' %}{% else %}{% url 'web:devoto_logout' %}{% endif %}">
-            {% csrf_token %}
-            <button class="session-link session-button" type="submit" title="Cerrar sesión">{{ nombre_sesion }}</button>
-          </form>
+          <a class="session-link" href="{% if tipo_sesion == 'administrativo' %}{% url 'web:admin_dashboard' %}{% else %}{% url 'web:devoto_panel' %}{% endif %}" title="Ir a mi cuenta">{{ nombre_sesion }}</a>
         {% else %}
           <a class="session-link" href="{% url 'web:iniciar_sesion' %}">🔒 Iniciar sesión</a>
         {% endif %}
