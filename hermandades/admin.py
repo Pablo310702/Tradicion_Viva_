@@ -220,6 +220,7 @@ class HermandadAdmin(admin.ModelAdmin):
         "inscripciones_turnos_link",
     )
 
+    list_display_links = ("nombre",)
     list_editable = ("orden_directorio",)
     ordering = ("orden_directorio", "nombre")
 
