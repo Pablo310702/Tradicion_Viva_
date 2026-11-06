@@ -250,11 +250,18 @@ header .brand,
 
 .header-inner .brand a{
   display:flex;
+  flex-wrap:wrap;
   min-width:0;
   max-width:100%;
   overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
+  white-space:normal;
+  line-height:1.15;
+  font-size:clamp(14px, 1.5vw, 20px);
+}
+
+.header-inner .brand a span{
+  min-width:0;
+  overflow-wrap:anywhere;
 }
 
 /* Identidad consistente del acceso de sesión en todas las pantallas de la
