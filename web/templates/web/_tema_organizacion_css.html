@@ -233,6 +233,24 @@ header .brand,
   color:var(--theme-header-text, var(--theme-text))!important;
 }
 
+/* Todos los encabezados internos de una organización deben conservar el
+   nombre legible aunque el tema no defina explícitamente header-text. */
+.header-inner .brand{
+  min-width:0;
+}
+
+.header-inner .brand a,
+.header-inner .brand a *{
+  color:var(--theme-header-text, {{ h.color_primario_texto }})!important;
+}
+
+.header-inner .brand a{
+  max-width:calc(100vw - 220px);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
 /* Encabezado y pie negros; el texto siempre conserva contraste. */
 footer,
 .site-footer,
