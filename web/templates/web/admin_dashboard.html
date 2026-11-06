@@ -4,11 +4,21 @@
 {% block meta_description %}Panel de indicadores y gesti&oacute;n de TRADICI&Oacute;N VIVA.{% endblock %}
 
 {% block header_actions %}
-  <a class="session-link" href="{% url 'admin:index' %}">Administraci&oacute;n completa</a>
+  <div class="admin-header-actions">
+    <a class="session-link" href="{% url 'web:admin_dashboard' %}" title="Ir al panel">{{ nombre_sesion }}</a>
+    <form method="post" action="{% url 'web:administrativo_logout' %}">
+      {% csrf_token %}
+      <button class="session-link session-button" type="submit">Cerrar sesi&oacute;n</button>
+    </form>
+    <a class="session-link" href="{% url 'admin:index' %}">Administraci&oacute;n completa</a>
+  </div>
 {% endblock %}
 
 {% block extra_css %}
 <style>
+  .admin-header-actions{position:absolute;right:16px;top:50%;display:flex;align-items:center;gap:8px;transform:translateY(-50%);}
+  .admin-header-actions .session-link{position:static;transform:none;}
+  .admin-header-actions form{margin:0;}
   .dashboard-header{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:22px;flex-wrap:wrap;}
   .dashboard-header h1{margin:0 0 6px;color:var(--brand-primary-deep);}
   .dashboard-header p{margin:0;color:var(--muted);}
