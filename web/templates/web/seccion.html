@@ -2861,8 +2861,8 @@ style="background: var(--theme-accent, #d4af37);"
     }
 
 
-    /* Suelo (0) a cabeza (1) es la altura total; cabeza (1) a hombro (2)
-       es la referencia que se convierte a centímetros. */
+    /* Suelo (0) a cabeza (1) es la altura total; suelo (0) a hombro (2)
+       es la medida que se convierte a centímetros (por ejemplo, 1.40 m). */
     const fullPx = Math.hypot(
       points[1].x - points[0].x,
       points[1].y - points[0].y
@@ -2870,8 +2870,8 @@ style="background: var(--theme-accent, #d4af37);"
 
 
     const referencePx = Math.hypot(
-      points[2].x - points[1].x,
-      points[2].y - points[1].y
+      points[2].x - points[0].x,
+      points[2].y - points[0].y
     );
 
 
