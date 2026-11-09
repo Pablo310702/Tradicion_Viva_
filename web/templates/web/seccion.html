@@ -1084,8 +1084,8 @@ style="background: var(--theme-accent, #d4af37);"
 
     .camera-stage {
       aspect-ratio: 4/3;
-      min-height: 180px;
-      max-height: min(42dvh, 420px) !important;
+      min-height: 240px;
+      max-height: min(55dvh, 520px) !important;
       flex: 0 0 auto;
     }
 
@@ -1105,6 +1105,19 @@ style="background: var(--theme-accent, #d4af37);"
       flex: 1 1 calc(50% - 6px);
       min-height: 44px;
     }
+  }
+
+  /* Los botones de medición deben conservar contraste en los temas claros. */
+  #measureDialog .measure-footer button {
+    border: 1px solid var(--theme-accent) !important;
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+
+  #measureDialog .measure-footer button:last-child {
+    background: var(--theme-accent) !important;
+    color: #ffffff !important;
+    border-color: var(--theme-accent) !important;
   }
 
 
