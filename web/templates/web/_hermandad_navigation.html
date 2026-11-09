@@ -332,6 +332,35 @@
 
 {% endif %}
 
+{% if "Desamparo" in h.nombre %}
+/* Desamparo: botones blancos en reposo; dorados únicamente al seleccionar,
+   abrir o enfocar una opción. */
+.org-desktop-menu .org-menu-link,
+.org-desktop-menu a.org-menu-link,
+.org-desktop-menu span.org-menu-link,
+#orgMenuDrawer .org-drawer-links > a,
+#orgMenuDrawer .org-drawer-links > details > summary {
+    background:#ffffff !important;
+    background-color:#ffffff !important;
+    color:#111111 !important;
+    border-color:#c4a035 !important;
+}
+
+.org-desktop-menu .org-menu-link:hover,
+.org-desktop-menu .org-menu-link:focus-visible,
+.org-desktop-menu .org-menu-item:hover > .org-menu-link,
+#orgMenuDrawer .org-drawer-links > a:hover,
+#orgMenuDrawer .org-drawer-links > a:focus,
+#orgMenuDrawer .org-drawer-links > details[open] > summary,
+#orgMenuDrawer .org-drawer-links > details > summary:hover,
+#orgMenuDrawer .org-drawer-links > details > summary:focus-visible {
+    background:#d6b75f !important;
+    background-color:#d6b75f !important;
+    color:#111111 !important;
+    border-color:#9f7e1d !important;
+}
+{% endif %}
+
 </style>
 
 

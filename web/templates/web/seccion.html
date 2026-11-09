@@ -897,12 +897,15 @@ style="background: var(--theme-accent, #d4af37);"
 
   .measure-dialog {
     width: min(780px,96vw);
+    max-height: calc(100dvh - 16px);
     padding: 0;
     border: 1px solid #444;
     border-radius: 20px;
     background: #0d0d0d;
     color: #fff;
-    overflow: hidden;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
   }
 
 
@@ -999,6 +1002,8 @@ style="background: var(--theme-accent, #d4af37);"
     background: #050505;
     aspect-ratio: 3/4;
     max-height: 62vh;
+    min-height: 0;
+    flex: 1 1 auto;
     overflow: hidden;
     touch-action: none;
   }
@@ -1057,6 +1062,45 @@ style="background: var(--theme-accent, #d4af37);"
   .measure-footer button:disabled {
     opacity: .4;
     cursor: not-allowed;
+  }
+
+  @media (max-width: 600px) {
+    .measure-dialog {
+      width: calc(100vw - 16px);
+      max-height: calc(100dvh - 16px);
+      border-radius: 14px;
+    }
+
+    .measure-header,
+    .measure-footer {
+      flex-wrap: wrap;
+    }
+
+    .measure-calibration {
+      flex: 0 0 auto;
+    }
+
+    .camera-stage {
+      aspect-ratio: 4/3;
+      min-height: 180px;
+      max-height: 42dvh;
+      flex: 0 0 auto;
+    }
+
+    .measure-footer {
+      position: sticky;
+      bottom: 0;
+      z-index: 3;
+    }
+
+    .measure-result {
+      flex: 1 1 100%;
+    }
+
+    .measure-footer button {
+      flex: 1 1 calc(50% - 6px);
+      min-height: 44px;
+    }
   }
 
 
