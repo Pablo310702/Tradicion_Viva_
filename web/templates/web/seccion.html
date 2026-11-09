@@ -3107,12 +3107,15 @@ style="background: var(--theme-accent, #d4af37);"
       const localY = event.target === canvas && Number.isFinite(event.offsetY)
         ? event.offsetY
         : event.clientY - canvasRect.top;
+      const pointY = Math.max(0, Math.min(canvasCssHeight,
+        localY * scaleY));
 
       points.push({
         x: Math.max(0, Math.min(canvasCssWidth,
           localX * scaleX)),
-        y: Math.max(0, Math.min(canvasCssHeight,
-          localY * scaleY))
+        /* El primer punto es S (suelo): debe quedar en el borde inferior
+           real del cuadro, aunque el dedo no alcance el último píxel. */
+        y: points.length === 0 ? canvasCssHeight : pointY
       });
 
 
