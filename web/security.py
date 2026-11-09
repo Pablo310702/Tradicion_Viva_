@@ -28,7 +28,7 @@ class SecurityHeadersMiddleware:
         response.setdefault("Content-Security-Policy", self.CONTENT_SECURITY_POLICY)
         response.setdefault(
             "Permissions-Policy",
-            "camera=(), microphone=(), geolocation=(self), payment=(), usb=()",
+            "camera=(self), microphone=(), geolocation=(self), payment=(), usb=()",
         )
         response.setdefault("X-Content-Type-Options", "nosniff")
         response.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
