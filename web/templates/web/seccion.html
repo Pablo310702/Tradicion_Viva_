@@ -2939,6 +2939,11 @@ style="background: var(--theme-accent, #d4af37);"
 
     reset();
 
+    video.muted = true;
+    video.playsInline = true;
+    video.setAttribute("playsinline", "");
+    video.setAttribute("autoplay", "");
+
 
     try {
 
@@ -2954,6 +2959,22 @@ style="background: var(--theme-accent, #d4af37);"
 
 
       video.srcObject = stream;
+
+      /* Algunos navegadores de escritorio aceptan el permiso pero no
+         arrancan el elemento por autoplay. Reproducimos explícitamente. */
+      await video.play();
+
+      video.addEventListener(
+        "loadedmetadata",
+        () => {
+          sizeCanvas();
+          video.play().catch(() => {
+            help.textContent =
+              "La cámara está disponible, pero el navegador no inició la imagen. Revisa el permiso de cámara y vuelve a abrirla.";
+          });
+        },
+        { once: true }
+      );
 
     } catch (e) {
 
@@ -2979,7 +3000,12 @@ style="background: var(--theme-accent, #d4af37);"
     }
 
 
-    dialog.close();
+    video.pause();
+    video.srcObject = null;
+
+    if (dialog.open) {
+      dialog.close();
+    }
   }
 
 
