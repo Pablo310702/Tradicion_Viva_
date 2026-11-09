@@ -2706,6 +2706,18 @@ style="background: var(--theme-accent, #d4af37);"
     draw();
   }
 
+  /* En móvil el modal puede cambiar de altura al abrir la cámara, cerrar el
+     teclado o aparecer la barra del navegador. Mantener el canvas sincronizado
+     evita que el toque inferior se dibuje más arriba. */
+  const stageResizeObserver =
+    "ResizeObserver" in window
+      ? new ResizeObserver(() => sizeCanvas())
+      : null;
+
+  if (stageResizeObserver) {
+    stageResizeObserver.observe(stage);
+  }
+
 
   function draw() {
 
