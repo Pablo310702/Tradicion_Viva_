@@ -2776,10 +2776,11 @@ style="background: var(--theme-accent, #d4af37);"
     }
 
 
+    /* El usuario marca en este orden: cabeza, hombro y suelo. */
     const labels = [
-      "S",
       "C",
-      "H"
+      "H",
+      "S"
     ];
 
 
@@ -2855,15 +2856,17 @@ style="background: var(--theme-accent, #d4af37);"
     }
 
 
+    /* Cabeza (0) a suelo (2) es la altura total; cabeza (0) a hombro (1)
+       es la referencia que se convierte a centímetros. */
     const fullPx = Math.hypot(
-      points[1].x - points[0].x,
-      points[1].y - points[0].y
+      points[2].x - points[0].x,
+      points[2].y - points[0].y
     );
 
 
-      const referencePx = Math.hypot(
-      points[2].x - points[0].x,
-      points[2].y - points[0].y
+    const referencePx = Math.hypot(
+      points[1].x - points[0].x,
+      points[1].y - points[0].y
     );
 
 
@@ -2989,20 +2992,23 @@ style="background: var(--theme-accent, #d4af37);"
       }
 
 
-      const r =
-        stage.getBoundingClientRect();
-
+      /* Convertimos desde la coordenada real del puntero a la coordenada
+         CSS del escenario. Esto evita el desplazamiento en móviles cuando
+         el canvas usa devicePixelRatio o la cámara se ajusta al contenedor. */
+      const canvasRect = canvas.getBoundingClientRect();
+      const scaleX = stage.clientWidth / canvasRect.width;
+      const scaleY = stage.clientHeight / canvasRect.height;
 
       points.push({
-        x: event.clientX - r.left,
-        y: event.clientY - r.top
+        x: (event.clientX - canvasRect.left) * scaleX,
+        y: (event.clientY - canvasRect.top) * scaleY
       });
 
 
       if (points.length === 1) {
 
         help.textContent =
-          "Ahora toca la parte superior de la cabeza.";
+          "Ahora toca exactamente el hombro.";
 
       }
 
@@ -3010,7 +3016,7 @@ style="background: var(--theme-accent, #d4af37);"
       if (points.length === 2) {
 
         help.textContent =
-          "Ahora toca exactamente el hombro.";
+          "Ahora toca el punto del suelo.";
 
       }
 
