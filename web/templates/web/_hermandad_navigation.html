@@ -346,6 +346,18 @@
     border-color:#c4a035 !important;
 }
 
+/* Las líneas del contenedor y de cada bloque del menú también deben
+   conservar el dorado de Desamparo sobre el fondo blanco. */
+.org-desktop-menu,
+.org-desktop-menu .org-menu-item,
+.org-menu-drawer,
+#orgMenuDrawer .org-drawer-top,
+#orgMenuDrawer .org-drawer-links,
+#orgMenuDrawer .org-drawer-submenu,
+#orgMenuDrawer .org-menu-close {
+    border-color:#c4a035 !important;
+}
+
 #orgMenuDrawer .org-drawer-links > details:not([open]) > summary,
 #orgMenuDrawer .org-drawer-links > a:not(:hover):not(:focus-visible),
 .org-desktop-menu .org-menu-link:not(:hover):not(:focus-visible) {
