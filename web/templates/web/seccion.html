@@ -2969,6 +2969,8 @@ style="background: var(--theme-accent, #d4af37);"
 
       video.srcObject = stream;
 
+      video.addEventListener("loadedmetadata", sizeCanvas, { once: true });
+
       /* Algunos navegadores de escritorio aceptan el permiso pero no
          arrancan el elemento por autoplay. Reproducimos explícitamente. */
       await video.play();
@@ -2987,7 +2989,15 @@ style="background: var(--theme-accent, #d4af37);"
 
     } catch (e) {
 
-      help.textContent =
+      const cameraMessage = {
+        NotAllowedError: "El navegador bloqueó la cámara. Permite el acceso al sitio y vuelve a pulsar Abrir cámara.",
+        PermissionDeniedError: "El navegador bloqueó la cámara. Permite el acceso al sitio y vuelve a pulsar Abrir cámara.",
+        NotFoundError: "No se encontró una cámara conectada a este equipo.",
+        NotReadableError: "La cámara está siendo usada por otra aplicación. Ciérrala y vuelve a intentarlo.",
+        SecurityError: "La cámara requiere HTTPS o localhost para funcionar."
+      };
+
+      help.textContent = cameraMessage[e.name] ||
         "No se pudo abrir la cámara. Revisa el permiso del navegador y usa HTTPS o localhost.";
 
     }
@@ -3025,11 +3035,17 @@ style="background: var(--theme-accent, #d4af37);"
 
 
   stage.addEventListener(
-    "pointerup",
+    "pointerdown",
     event => {
+
+      event.preventDefault();
 
       if (points.length >= 3) {
         return;
+      }
+
+      if (event.pointerId !== undefined && stage.setPointerCapture) {
+        stage.setPointerCapture(event.pointerId);
       }
 
 
