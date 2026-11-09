@@ -2801,6 +2801,8 @@ style="background: var(--theme-accent, #d4af37);"
     ];
 
 
+    const markerRadius = 9 * d;
+
     points.forEach((p, i) => {
 
       ctx.fillStyle = color;
@@ -2810,7 +2812,7 @@ style="background: var(--theme-accent, #d4af37);"
       ctx.arc(
         p.x * d,
         p.y * d,
-        9 * d,
+        markerRadius,
         0,
         Math.PI * 2
       );
@@ -3115,7 +3117,11 @@ style="background: var(--theme-accent, #d4af37);"
           localX * scaleX)),
         /* El primer punto es S (suelo): debe quedar en el borde inferior
            real del cuadro, aunque el dedo no alcance el último píxel. */
-        y: points.length === 0 ? canvasCssHeight : pointY
+        /* El centro queda un radio por encima del borde para que la S sea
+           visible completa y el marcador siga indicando el suelo. */
+        y: points.length === 0
+          ? Math.max(9, canvasCssHeight - 9)
+          : pointY
       });
 
 
