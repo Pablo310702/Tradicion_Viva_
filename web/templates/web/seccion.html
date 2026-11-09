@@ -1089,8 +1089,8 @@ style="background: var(--theme-accent, #d4af37);"
 
     .camera-stage {
       aspect-ratio: 4/3;
-      min-height: 240px;
-      max-height: min(55dvh, 520px) !important;
+      min-height: 300px;
+      max-height: min(68dvh, 640px) !important;
       flex: 0 0 auto;
     }
 
@@ -3053,12 +3053,17 @@ style="background: var(--theme-accent, #d4af37);"
          CSS del escenario. Esto evita el desplazamiento en móviles cuando
          el canvas usa devicePixelRatio o la cámara se ajusta al contenedor. */
       const canvasRect = canvas.getBoundingClientRect();
-      const scaleX = stage.clientWidth / canvasRect.width;
-      const scaleY = stage.clientHeight / canvasRect.height;
+      const d = window.devicePixelRatio || 1;
+      const canvasCssWidth = canvas.width / d;
+      const canvasCssHeight = canvas.height / d;
+      const scaleX = canvasCssWidth / canvasRect.width;
+      const scaleY = canvasCssHeight / canvasRect.height;
 
       points.push({
-        x: (event.clientX - canvasRect.left) * scaleX,
-        y: (event.clientY - canvasRect.top) * scaleY
+        x: Math.max(0, Math.min(canvasCssWidth,
+          (event.clientX - canvasRect.left) * scaleX)),
+        y: Math.max(0, Math.min(canvasCssHeight,
+          (event.clientY - canvasRect.top) * scaleY))
       });
 
 
