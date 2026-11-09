@@ -2956,15 +2956,28 @@ style="background: var(--theme-accent, #d4af37);"
 
     try {
 
-      stream =
-        await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: {
-              ideal: "environment"
-            }
-          },
-          audio: false
-        });
+      try {
+        stream =
+          await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: {
+                ideal: "environment"
+              }
+            },
+            audio: false
+          });
+      } catch (cameraError) {
+        /* En laptops normalmente no existe cámara trasera. */
+        if (cameraError.name !== "OverconstrainedError") {
+          throw cameraError;
+        }
+
+        stream =
+          await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          });
+      }
 
 
       video.srcObject = stream;
@@ -2973,7 +2986,10 @@ style="background: var(--theme-accent, #d4af37);"
 
       /* Algunos navegadores de escritorio aceptan el permiso pero no
          arrancan el elemento por autoplay. Reproducimos explícitamente. */
-      await video.play();
+      await video.play().catch(() => {
+        help.textContent =
+          "La cámara tiene permiso, pero el navegador bloqueó la reproducción. Pulsa el botón de reproducción de la cámara o vuelve a abrirla.";
+      });
 
       video.addEventListener(
         "loadedmetadata",
