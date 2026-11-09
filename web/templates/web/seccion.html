@@ -2956,6 +2956,18 @@ style="background: var(--theme-accent, #d4af37);"
 
     try {
 
+      if (!window.isSecureContext) {
+        throw Object.assign(new Error("Secure context required"), {
+          name: "SecurityError"
+        });
+      }
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw Object.assign(new Error("Camera API unavailable"), {
+          name: "NotSupportedError"
+        });
+      }
+
       try {
         stream =
           await navigator.mediaDevices.getUserMedia({
@@ -2983,6 +2995,9 @@ style="background: var(--theme-accent, #d4af37);"
       video.srcObject = stream;
 
       video.addEventListener("loadedmetadata", sizeCanvas, { once: true });
+      video.addEventListener("loadedmetadata", () => {
+        video.play().catch(() => {});
+      }, { once: true });
 
       /* Algunos navegadores de escritorio aceptan el permiso pero no
          arrancan el elemento por autoplay. Reproducimos explícitamente. */
@@ -3074,12 +3089,18 @@ style="background: var(--theme-accent, #d4af37);"
       const canvasCssHeight = canvas.height / d;
       const scaleX = canvasCssWidth / canvasRect.width;
       const scaleY = canvasCssHeight / canvasRect.height;
+      const localX = event.target === canvas && Number.isFinite(event.offsetX)
+        ? event.offsetX
+        : event.clientX - canvasRect.left;
+      const localY = event.target === canvas && Number.isFinite(event.offsetY)
+        ? event.offsetY
+        : event.clientY - canvasRect.top;
 
       points.push({
         x: Math.max(0, Math.min(canvasCssWidth,
-          (event.clientX - canvasRect.left) * scaleX)),
+          localX * scaleX)),
         y: Math.max(0, Math.min(canvasCssHeight,
-          (event.clientY - canvasRect.top) * scaleY))
+          localY * scaleY))
       });
 
 
