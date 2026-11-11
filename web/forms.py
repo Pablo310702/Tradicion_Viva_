@@ -1,6 +1,7 @@
 import json
 from datetime import date
 from decimal import Decimal
+import re
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -9,10 +10,16 @@ from hermandades.models import CuentaDevoto, Devoto
 from hermandades.guatemala_ubicaciones import DEPARTAMENTO_CHOICES, MUNICIPIOS_POR_DEPARTAMENTO
 
 
+NOMBRE_PERSONA_RE = re.compile(r"^[^\W\d_]+(?: [^\W\d_]+)*$", re.UNICODE)
+NOMBRE_PERSONA_ERROR = (
+    "Solo se permiten letras, tildes, ñ y espacios; no se permiten números ni símbolos."
+)
+
+
 class DevotoForm(forms.ModelForm):
     dia = forms.IntegerField(min_value=1, max_value=31)
     mes = forms.IntegerField(min_value=1, max_value=12)
-    anio = forms.IntegerField(min_value=1900, max_value=date.today().year)
+    anio = forms.IntegerField(min_value=1900, max_value=date.today().year - 6)
     correo2 = forms.EmailField(label="Verifique correo")
     password1 = forms.CharField(
         label="Contraseña",
@@ -123,6 +130,22 @@ class DevotoForm(forms.ModelForm):
             "Autorizo recibir por correo electrónico avisos, saludos e información institucional."
         )
         self.fields["acepta_whatsapp"].required = False
+        # La inscripción exige una edad mínima de seis años también en el
+        # control HTML, sin confiar únicamente en la validación del navegador.
+        self.fields["anio"].widget.attrs["max"] = str(date.today().year - 6)
+        for field_name in (
+            "primer_nombre",
+            "otros_nombres",
+            "primer_apellido",
+            "otros_apellidos",
+        ):
+            self.fields[field_name].widget.attrs.update(
+                {
+                    "pattern": r"[^\W\d_]+(?: [^\W\d_]+)*",
+                    "title": NOMBRE_PERSONA_ERROR,
+                    "inputmode": "text",
+                }
+            )
         self.fields["acepta_whatsapp"].label = (
             "Autorizo recibir por WhatsApp avisos, saludos e información institucional en mi número registrado."
         )
@@ -179,6 +202,26 @@ class DevotoForm(forms.ModelForm):
             raise ValidationError("El celular debe contener al menos 8 dígitos.")
         return celular
 
+    def _clean_nombre_persona(self, field_name):
+        valor = " ".join((self.cleaned_data.get(field_name) or "").split())
+        if not valor and field_name in {"otros_nombres", "otros_apellidos"}:
+            return ""
+        if not NOMBRE_PERSONA_RE.fullmatch(valor):
+            raise ValidationError(NOMBRE_PERSONA_ERROR)
+        return valor
+
+    def clean_primer_nombre(self):
+        return self._clean_nombre_persona("primer_nombre")
+
+    def clean_otros_nombres(self):
+        return self._clean_nombre_persona("otros_nombres")
+
+    def clean_primer_apellido(self):
+        return self._clean_nombre_persona("primer_apellido")
+
+    def clean_otros_apellidos(self):
+        return self._clean_nombre_persona("otros_apellidos")
+
     def clean_medida_hombro_cm(self):
         medida = self.cleaned_data.get("medida_hombro_cm")
         if medida in (None, ""):
@@ -232,6 +275,15 @@ class DevotoForm(forms.ModelForm):
             else:
                 if fecha_nacimiento > date.today():
                     self.add_error("anio", "La fecha de nacimiento no puede estar en el futuro.")
+                elif fecha_nacimiento > date(
+                    date.today().year - 6,
+                    date.today().month,
+                    date.today().day,
+                ):
+                    self.add_error(
+                        "anio",
+                        "La edad mínima para registrarse es de 6 años.",
+                    )
                 else:
                     cleaned["fecha_nacimiento"] = fecha_nacimiento
 
