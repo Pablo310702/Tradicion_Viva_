@@ -19,7 +19,14 @@ NOMBRE_PERSONA_ERROR = (
 class DevotoForm(forms.ModelForm):
     dia = forms.IntegerField(min_value=1, max_value=31)
     mes = forms.IntegerField(min_value=1, max_value=12)
-    anio = forms.IntegerField(min_value=1900, max_value=date.today().year - 6)
+    anio = forms.IntegerField(
+        min_value=date.today().year - 100,
+        max_value=date.today().year - 6,
+        error_messages={
+            "min_value": "La edad máxima permitida es de 100 años.",
+            "max_value": "La edad mínima para registrarse es de 6 años.",
+        },
+    )
     correo2 = forms.EmailField(label="Verifique correo")
     password1 = forms.CharField(
         label="Contraseña",
@@ -132,6 +139,9 @@ class DevotoForm(forms.ModelForm):
         self.fields["acepta_whatsapp"].required = False
         # La inscripción exige una edad mínima de seis años también en el
         # control HTML, sin confiar únicamente en la validación del navegador.
+        self.fields["anio"].min_value = date.today().year - 100
+        self.fields["anio"].max_value = date.today().year - 6
+        self.fields["anio"].widget.attrs["min"] = str(date.today().year - 100)
         self.fields["anio"].widget.attrs["max"] = str(date.today().year - 6)
         for field_name in (
             "primer_nombre",
