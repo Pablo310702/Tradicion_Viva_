@@ -3278,7 +3278,30 @@ style="background: var(--theme-accent, #d4af37);"
 
     form.addEventListener(
       "reset",
-      () => {
+      event => {
+
+        /* Django puede devolver valores como atributos iniciales después de
+           una validación fallida. El reset nativo los restauraría en lugar
+           de dejar el formulario completamente vacío. */
+        event.preventDefault();
+
+        form
+          .querySelectorAll("input, select, textarea")
+          .forEach(control => {
+            if (control.name === "csrfmiddlewaretoken") {
+              return;
+            }
+
+            if (control.type === "checkbox" || control.type === "radio") {
+              control.checked = false;
+            } else if (control.tagName === "SELECT") {
+              control.selectedIndex = 0;
+            } else {
+              control.value = "";
+            }
+
+            control.setCustomValidity("");
+          });
 
         if (hidden) {
           hidden.value = "";
