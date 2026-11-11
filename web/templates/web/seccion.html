@@ -2415,7 +2415,8 @@ style="background: var(--theme-accent, #d4af37);"
           <div class="form-actions">
 
             <button
-              type="reset"
+              type="button"
+              id="clearRegistration"
               class="btn-secondary"
             >
               Borrar
@@ -2644,6 +2645,42 @@ style="background: var(--theme-accent, #d4af37);"
 
   departamentoSelect.addEventListener("change", () => {
     cargarMunicipios("");
+  });
+})();
+</script>
+
+
+
+<script>
+(() => {
+  const form = document.getElementById("registroForm");
+  const clearButton = document.getElementById("clearRegistration");
+
+  if (!form || !clearButton) {
+    return;
+  }
+
+  clearButton.addEventListener("click", () => {
+    form.querySelectorAll("input, select, textarea").forEach(control => {
+      if (control.name === "csrfmiddlewaretoken") {
+        return;
+      }
+
+      if (control.type === "checkbox" || control.type === "radio") {
+        control.checked = false;
+      } else if (control.tagName === "SELECT") {
+        control.selectedIndex = 0;
+      } else {
+        control.value = "";
+      }
+
+      control.setCustomValidity("");
+    });
+
+    const hiddenMeasurement = document.getElementById("id_medida_hombro_cm");
+    const measurementOutput = document.getElementById("medidaHombroVisual");
+    if (hiddenMeasurement) hiddenMeasurement.value = "";
+    if (measurementOutput) measurementOutput.value = "";
   });
 })();
 </script>
