@@ -355,6 +355,22 @@ class DevotoLoginForm(forms.Form):
         return self.cleaned_data["correo"].strip().lower()
 
 
+class DevotoVerificationCodeForm(forms.Form):
+    codigo = forms.RegexField(
+        regex=r"^\d{6}$",
+        label="Código de verificación",
+        error_messages={"invalid": "Ingresa el código de 6 dígitos enviado a tu correo."},
+        widget=forms.TextInput(
+            attrs={
+                "inputmode": "numeric",
+                "autocomplete": "one-time-code",
+                "maxlength": "6",
+                "placeholder": "000000",
+            }
+        ),
+    )
+
+
 class AdministrativoLoginForm(forms.Form):
     usuario = forms.CharField(
         label="Usuario o correo",

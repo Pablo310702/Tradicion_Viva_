@@ -6,6 +6,7 @@ import json
 import logging
 import math
 import re
+import secrets
 from collections import defaultdict
 from io import BytesIO
 
@@ -18,6 +19,7 @@ from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.core import signing
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.mail import EmailMultiAlternatives, send_mail
+from django.contrib.auth.hashers import check_password, make_password
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import Http404, HttpResponse, JsonResponse
@@ -51,6 +53,7 @@ from .forms import (
     AdministrativoLoginForm,
     DevotoForm,
     DevotoLoginForm,
+    DevotoVerificationCodeForm,
     RecuperarCuentaDevotoForm,
     RestablecerPasswordDevotoForm,
 )
@@ -435,6 +438,46 @@ def _cuenta_devoto_actual(request):
     return CuentaDevoto.objects.filter(pk=cuenta_id, activa=True).first()
 
 
+DEVOTO_VERIFICATION_SESSION_KEY = "devoto_verification_pending"
+DEVOTO_VERIFICATION_SECONDS = 10 * 60
+DEVOTO_VERIFICATION_MAX_ATTEMPTS = 5
+DEVOTO_VERIFICATION_RESEND_SECONDS = 60
+
+
+def _enviar_codigo_verificacion(request, cuenta, *, pending=None):
+    codigo = f"{secrets.randbelow(900000) + 100000:06d}"
+    ahora = timezone.now()
+    estado = dict(pending or {})
+    estado.update(
+        {
+            "correo": cuenta.correo,
+            "cuenta_id": cuenta.pk,
+            "codigo_hash": make_password(codigo),
+            "expira_en": (ahora + timedelta(seconds=DEVOTO_VERIFICATION_SECONDS)).isoformat(),
+            "enviado_en": ahora.isoformat(),
+            "intentos": 0,
+        }
+    )
+    send_mail(
+        subject="Tu código de verificación | TRADICIÓN VIVA",
+        message=(
+            f"Hola.\n\nTu código de verificación para entrar a TRADICIÓN VIVA es: {codigo}\n\n"
+            "Este código vence en 10 minutos y solo puede usarse una vez. Si no solicitaste este acceso, "
+            "puedes ignorar este mensaje."
+        ),
+        from_email=settings.EMAIL_HOST_USER or "tradicionvivagt@gmail.com",
+        recipient_list=[cuenta.correo],
+        fail_silently=False,
+    )
+    request.session[DEVOTO_VERIFICATION_SESSION_KEY] = estado
+    request.session.modified = True
+
+
+def _limpiar_verificacion(request):
+    request.session.pop(DEVOTO_VERIFICATION_SESSION_KEY, None)
+    request.session.modified = True
+
+
 def devoto_login(request):
     if _cuenta_devoto_actual(request):
         return redirect("web:devoto_panel")
@@ -455,10 +498,23 @@ def devoto_login(request):
                     form.add_error(None, "Correo o contraseña incorrectos.")
             else:
                 limpiar_fallos_login("devoto", correo, request)
-                request.session.cycle_key()
-                request.session["cuenta_devoto_id"] = cuenta.pk
-                request.session["tradicion_viva_last_activity"] = timezone.now().timestamp()
-                request.session.set_expiry(60 * 60 * 24 * 30 if form.cleaned_data["recordar"] else 0)
+                next_url = request.POST.get("next") or request.GET.get("next")
+                try:
+                    _enviar_codigo_verificacion(
+                        request,
+                        cuenta,
+                        pending={"recordar": form.cleaned_data["recordar"], "next": next_url or ""},
+                    )
+                except Exception:
+                    logger.exception("No se pudo enviar el código de verificación de devoto")
+                    form.add_error(None, "No se pudo enviar el código de verificación. Intenta de nuevo en unos minutos.")
+                    return render(
+                        request,
+                        "web/devoto_login.html",
+                        {"form": form, "next": request.GET.get("next", "")},
+                    )
+                else:
+                    return redirect("web:devoto_verificar_correo")
                 cuenta.ultimo_acceso = timezone.now()
                 cuenta.save(update_fields=["ultimo_acceso"])
                 nombre = cuenta.inscripciones.order_by("creado_en").values_list("primer_nombre", flat=True).first()
@@ -484,6 +540,71 @@ def devoto_login(request):
             "next": request.GET.get("next", ""),
         },
     )
+
+
+def devoto_verificar_correo(request):
+    pendiente = request.session.get(DEVOTO_VERIFICATION_SESSION_KEY)
+    if not pendiente:
+        return redirect("web:devoto_login")
+
+    form = DevotoVerificationCodeForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        expira_en = parse_datetime(pendiente.get("expira_en", ""))
+        if not expira_en or timezone.now() >= expira_en:
+            _limpiar_verificacion(request)
+            form.add_error(None, "El código venció. Inicia sesión nuevamente para solicitar otro.")
+        elif pendiente.get("intentos", 0) >= DEVOTO_VERIFICATION_MAX_ATTEMPTS:
+            _limpiar_verificacion(request)
+            form.add_error(None, "Se alcanzó el límite de intentos. Inicia sesión nuevamente para solicitar otro código.")
+        elif not check_password(form.cleaned_data["codigo"], pendiente.get("codigo_hash", "")):
+            pendiente["intentos"] = pendiente.get("intentos", 0) + 1
+            request.session[DEVOTO_VERIFICATION_SESSION_KEY] = pendiente
+            form.add_error(None, "El código no es correcto. Revisa tu correo e intenta nuevamente.")
+        else:
+            cuenta = CuentaDevoto.objects.filter(pk=pendiente.get("cuenta_id"), activa=True).first()
+            if not cuenta:
+                _limpiar_verificacion(request)
+                form.add_error(None, "La cuenta ya no está disponible.")
+            else:
+                next_url = pendiente.get("next", "")
+                recordar = bool(pendiente.get("recordar"))
+                _limpiar_verificacion(request)
+                request.session.cycle_key()
+                request.session["cuenta_devoto_id"] = cuenta.pk
+                request.session["tradicion_viva_last_activity"] = timezone.now().timestamp()
+                request.session.set_expiry(60 * 60 * 24 * 30 if recordar else 0)
+                cuenta.ultimo_acceso = timezone.now()
+                cuenta.save(update_fields=["ultimo_acceso"])
+                nombre = cuenta.inscripciones.order_by("creado_en").values_list("primer_nombre", flat=True).first()
+                messages.success(request, f"¡Bienvenido{', ' + nombre if nombre else ''}! Has iniciado sesión correctamente.")
+                if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+                    return redirect(next_url)
+                return redirect("web:devoto_panel")
+
+    return render(request, "web/devoto_verificar_correo.html", {"form": form, "correo": pendiente.get("correo", "")})
+
+
+@require_POST
+def devoto_reenviar_codigo(request):
+    pendiente = request.session.get(DEVOTO_VERIFICATION_SESSION_KEY)
+    if not pendiente:
+        return redirect("web:devoto_login")
+    enviado_en = parse_datetime(pendiente.get("enviado_en", ""))
+    if enviado_en and (timezone.now() - enviado_en).total_seconds() < DEVOTO_VERIFICATION_RESEND_SECONDS:
+        messages.error(request, "Espera un minuto antes de solicitar otro código.")
+        return redirect("web:devoto_verificar_correo")
+    cuenta = CuentaDevoto.objects.filter(pk=pendiente.get("cuenta_id"), activa=True).first()
+    if not cuenta:
+        _limpiar_verificacion(request)
+        return redirect("web:devoto_login")
+    try:
+        _enviar_codigo_verificacion(request, cuenta, pending=pendiente)
+    except Exception:
+        logger.exception("No se pudo reenviar el código de verificación de devoto")
+        messages.error(request, "No se pudo reenviar el código. Intenta nuevamente.")
+    else:
+        messages.success(request, "Enviamos un nuevo código de verificación a tu correo.")
+    return redirect("web:devoto_verificar_correo")
 
 
 def devoto_panel(request):
