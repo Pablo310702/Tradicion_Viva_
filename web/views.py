@@ -478,6 +478,38 @@ def _limpiar_verificacion(request):
     request.session.modified = True
 
 
+ADMIN_VERIFICATION_SESSION_KEY = "administrativo_verification_pending"
+
+
+def _enviar_codigo_verificacion_admin(request, user):
+    codigo = f"{secrets.randbelow(900000) + 100000:06d}"
+    ahora = timezone.now()
+    send_mail(
+        subject="Tu código de verificación administrativa | TRADICIÓN VIVA",
+        message=(
+            f"Hola.\n\nTu código de verificación para entrar al panel administrativo es: {codigo}\n\n"
+            "Este código vence en 10 minutos y solo puede usarse una vez."
+        ),
+        from_email=settings.EMAIL_HOST_USER or "tradicionvivagt@gmail.com",
+        recipient_list=[user.email],
+        fail_silently=False,
+    )
+    request.session[ADMIN_VERIFICATION_SESSION_KEY] = {
+        "user_id": user.pk,
+        "correo": user.email,
+        "codigo_hash": make_password(codigo),
+        "expira_en": (ahora + timedelta(seconds=DEVOTO_VERIFICATION_SECONDS)).isoformat(),
+        "enviado_en": ahora.isoformat(),
+        "intentos": 0,
+    }
+    request.session.modified = True
+
+
+def _limpiar_verificacion_admin(request):
+    request.session.pop(ADMIN_VERIFICATION_SESSION_KEY, None)
+    request.session.modified = True
+
+
 def devoto_login(request):
     if _cuenta_devoto_actual(request):
         return redirect("web:devoto_panel")
@@ -669,6 +701,70 @@ def administrativo_logout(request):
     return redirect("web:home")
 
 
+def administrativo_verificar_correo(request):
+    pendiente = request.session.get(ADMIN_VERIFICATION_SESSION_KEY)
+    if not pendiente:
+        return redirect("web:administrativo_login")
+
+    form = DevotoVerificationCodeForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        expira_en = parse_datetime(pendiente.get("expira_en", ""))
+        if not expira_en or timezone.now() >= expira_en:
+            _limpiar_verificacion_admin(request)
+            form.add_error(None, "El código venció. Inicia sesión nuevamente para solicitar otro.")
+        elif pendiente.get("intentos", 0) >= DEVOTO_VERIFICATION_MAX_ATTEMPTS:
+            _limpiar_verificacion_admin(request)
+            form.add_error(None, "Se alcanzó el límite de intentos. Inicia sesión nuevamente para solicitar otro código.")
+        elif not check_password(form.cleaned_data["codigo"], pendiente.get("codigo_hash", "")):
+            pendiente["intentos"] = pendiente.get("intentos", 0) + 1
+            request.session[ADMIN_VERIFICATION_SESSION_KEY] = pendiente
+            form.add_error(None, "El código no es correcto. Revisa tu correo e intenta nuevamente.")
+        else:
+            user = get_user_model().objects.filter(
+                pk=pendiente.get("user_id"), is_active=True, is_staff=True
+            ).first()
+            tiene_acceso = user and (user.is_superuser or AdministradorOrganizacion.objects.filter(usuario=user, activo=True).exists())
+            if not tiene_acceso:
+                _limpiar_verificacion_admin(request)
+                form.add_error(None, "El usuario ya no tiene permisos administrativos activos.")
+            else:
+                _limpiar_verificacion_admin(request)
+                login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+                request.session["tradicion_viva_last_activity"] = timezone.now().timestamp()
+                registrar_actividad(request, "inicio_sesion", "Inicio de sesión administrativo correcto.")
+                messages.success(request, "Bienvenido al panel administrativo de TRADICIÓN VIVA.")
+                return redirect("web:admin_dashboard")
+
+    return render(
+        request,
+        "web/administrativo_verificar_correo.html",
+        {"form": form, "correo": pendiente.get("correo", ""), "tipo_acceso": "administrativo"},
+    )
+
+
+@require_POST
+def administrativo_reenviar_codigo(request):
+    pendiente = request.session.get(ADMIN_VERIFICATION_SESSION_KEY)
+    if not pendiente:
+        return redirect("web:administrativo_login")
+    enviado_en = parse_datetime(pendiente.get("enviado_en", ""))
+    if enviado_en and (timezone.now() - enviado_en).total_seconds() < DEVOTO_VERIFICATION_RESEND_SECONDS:
+        messages.error(request, "Espera un minuto antes de solicitar otro código.")
+        return redirect("web:administrativo_verificar_correo")
+    user = get_user_model().objects.filter(pk=pendiente.get("user_id"), is_active=True, is_staff=True).first()
+    if not user or not user.email:
+        _limpiar_verificacion_admin(request)
+        return redirect("web:administrativo_login")
+    try:
+        _enviar_codigo_verificacion_admin(request, user)
+    except Exception:
+        logger.exception("No se pudo reenviar el código de verificación administrativa")
+        messages.error(request, "No se pudo reenviar el código. Intenta nuevamente.")
+    else:
+        messages.success(request, "Enviamos un nuevo código de verificación a tu correo.")
+    return redirect("web:administrativo_verificar_correo")
+
+
 def administrativo_login(request):
     if request.user.is_authenticated and request.user.is_staff:
         return redirect("web:admin_dashboard")
@@ -703,20 +799,22 @@ def administrativo_login(request):
 
             if tiene_acceso:
                 limpiar_fallos_login("administrativo", identificador, request)
-                login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-                request.session["tradicion_viva_last_activity"] = timezone.now().timestamp()
-                registrar_actividad(
-                    request,
-                    "inicio_sesion",
-                    "Inicio de sesión administrativo correcto.",
-                )
-                messages.success(request, "Bienvenido al panel administrativo de TRADICIÓN VIVA.")
-                return redirect("web:admin_dashboard")
+                if not user.email:
+                    form.add_error(None, "Tu usuario administrativo no tiene un correo vinculado. Solicita al administrador del sistema que lo configure.")
+                else:
+                    try:
+                        _enviar_codigo_verificacion_admin(request, user)
+                    except Exception:
+                        logger.exception("No se pudo enviar el código de verificación administrativa")
+                        form.add_error(None, "No se pudo enviar el código de verificación. Intenta de nuevo en unos minutos.")
+                    else:
+                        return redirect("web:administrativo_verificar_correo")
 
-            form.add_error(
-                None,
-                "Tu usuario administrativo todavía no tiene una hermandad o cofradía asignada.",
-            )
+            elif not tiene_acceso:
+                form.add_error(
+                    None,
+                    "Tu usuario administrativo todavía no tiene una hermandad o cofradía asignada.",
+                )
         else:
             if registrar_fallo_login("administrativo", identificador, request):
                 form.add_error(None, "Se alcanzó el límite de intentos. El acceso quedó bloqueado durante 15 minutos.")
